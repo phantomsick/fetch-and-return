@@ -2,12 +2,27 @@
 import { useState } from 'react';
 import { LoginForm } from './login-form';
 import { RegisterForm } from './register-form';
+import { ForgotPasswordForm } from './forgot-password-form';
+import { useSearchParams } from 'react-router-dom';
 
 export function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const resetMode = searchParams.get('reset') === 'true';
+  
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'forgot-password'>(
+    resetMode ? 'forgot-password' : 'login'
+  );
   
   const toggleForm = () => {
-    setIsLogin(!isLogin);
+    setCurrentView(currentView === 'login' ? 'register' : 'login');
+  };
+  
+  const showForgotPassword = () => {
+    setCurrentView('forgot-password');
+  };
+  
+  const goToLogin = () => {
+    setCurrentView('login');
   };
   
   return (
@@ -19,10 +34,19 @@ export function AuthPage() {
         </p>
       </div>
       
-      {isLogin ? (
-        <LoginForm onToggleForm={toggleForm} />
-      ) : (
+      {currentView === 'login' && (
+        <LoginForm 
+          onToggleForm={toggleForm} 
+          onForgotPassword={showForgotPassword} 
+        />
+      )}
+      
+      {currentView === 'register' && (
         <RegisterForm onToggleForm={toggleForm} />
+      )}
+      
+      {currentView === 'forgot-password' && (
+        <ForgotPasswordForm onBack={goToLogin} />
       )}
     </div>
   );

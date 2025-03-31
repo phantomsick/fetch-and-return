@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/header";
@@ -31,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { getResolutionMessage, getResolutionActionText } from "@/lib/supabase";
 
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,7 +45,6 @@ const ItemDetail = () => {
   const [updating, setUpdating] = useState(false);
   
   useEffect(() => {
-    // Check for dark mode preference
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(isDarkMode);
     
@@ -82,7 +81,6 @@ const ItemDetail = () => {
         throw error;
       }
       
-      // Get user profile for this item
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('*')
@@ -118,7 +116,6 @@ const ItemDetail = () => {
         throw error;
       }
       
-      // Get user profiles for comments
       const commentsWithUsers = await Promise.all((data as Comment[]).map(async (comment) => {
         const { data: userData, error: userError } = await supabase
           .from('profiles')
@@ -141,7 +138,6 @@ const ItemDetail = () => {
   const updateItemStatus = async (newStatus: 'Open' | 'Resolved') => {
     if (!item || !user) return;
     
-    // Check if the current user is the item owner
     if (user.id !== item.user_id) {
       toast({
         title: "Permission denied",
@@ -163,12 +159,15 @@ const ItemDetail = () => {
         throw error;
       }
       
-      // Update local state
       setItem({ ...item, status: newStatus });
+      
+      const message = newStatus === "Resolved" 
+        ? getResolutionMessage(item.category)
+        : "Item status has been updated to Open.";
       
       toast({
         title: "Status updated",
-        description: `Item status has been updated to ${newStatus}.`,
+        description: message,
       });
     } catch (error) {
       console.error('Error updating item status:', error);
@@ -192,7 +191,6 @@ const ItemDetail = () => {
   };
   
   const formatContactInfo = (contactInfo: string) => {
-    // Simple formatting to detect email and phone numbers
     const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
     const phonePattern = /(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
     
@@ -322,15 +320,17 @@ const ItemDetail = () => {
                           <AlertDialogTrigger asChild>
                             <Button disabled={updating}>
                               <CheckSquare className="mr-2 h-4 w-4" />
-                              Mark as Resolved
+                              {getResolutionActionText(item.category)}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Mark as Resolved?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to mark this item as resolved? This will indicate
-                                that the item has been returned to its owner or claimed.
+                                {item.category === "Lost" 
+                                  ? "Are you sure you want to mark this item as found and returned? This indicates that the lost item has been found and returned to you."
+                                  : "Are you sure you want to mark this item as claimed? This indicates that the found item has been claimed by its rightful owner."
+                                }
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -338,7 +338,7 @@ const ItemDetail = () => {
                               <AlertDialogAction
                                 onClick={() => updateItemStatus("Resolved")}
                               >
-                                Yes, Mark as Resolved
+                                Yes, {getResolutionActionText(item.category)}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -356,7 +356,7 @@ const ItemDetail = () => {
                               <AlertDialogTitle>Reopen Item?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to reopen this item? This will change the status
-                                back to "Open" and indicate that the item is still lost or unclaimed.
+                                back to "Open" and indicate that the item is still {item.category === "Lost" ? "lost" : "unclaimed"}.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

@@ -1,8 +1,10 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;
@@ -11,6 +13,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   loading: boolean;
   authError: string | null;
 };
@@ -24,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const setupAuth = async () => {
@@ -43,6 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
+          // If user is now null and it was a sign out event, redirect to auth page
+          if (event === 'SIGNED_OUT') {
+            navigate('/auth');
+          }
         }
       });
 
@@ -54,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     setupAuth();
-  }, []);
+  }, [navigate]);
   
   const fetchProfile = async (userId: string) => {
     try {
@@ -146,6 +154,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      setAuthError(null);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+      
+      if (error) {
+        setAuthError(error.message);
+        toast({
+          title: "Password reset error",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for a link to reset your password."
+      });
+    } catch (error) {
+      console.error('Password reset error:', error);
+      toast({
+        title: "Password reset error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const signOut = async () => {
     try {
       setLoading(true);
@@ -164,6 +207,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Signed out",
         description: "You've been successfully logged out."
       });
+      
+      // Navigate to auth page after sign out
+      navigate('/auth');
     } catch (error) {
       console.error('Sign out error:', error);
       toast({
@@ -184,7 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile, 
         signIn, 
         signUp, 
-        signOut, 
+        signOut,
+        resetPassword,
         loading,
         authError 
       }}

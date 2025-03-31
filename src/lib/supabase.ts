@@ -33,3 +33,21 @@ export type Comment = {
   created_at: string;
   user?: Profile | null;
 };
+
+// Function to get appropriate resolution message based on category
+export const getResolutionMessage = (category: 'Lost' | 'Found'): string => {
+  if (category === 'Lost') {
+    return "Item has been found and returned to the owner";
+  } else {
+    return "Item has been claimed by its owner";
+  }
+};
+
+// Function to get appropriate action text based on category
+export const getResolutionActionText = (category: 'Lost' | 'Found'): string => {
+  if (category === 'Lost') {
+    return "Mark as Found & Returned";
+  } else {
+    return "Mark as Claimed by Owner";
+  }
+};

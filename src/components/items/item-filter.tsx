@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Filter, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -35,14 +35,18 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [showFilters, setShowFilters] = useState(false);
 
-  const handleFilter = () => {
-    onFilter({
-      category,
-      status,
-      location: location || undefined,
-      date,
-    });
-  };
+  // Apply filters whenever any filter value changes
+  useEffect(() => {
+    // Don't trigger on component mount (only on changes after)
+    if (category !== undefined || status !== undefined || location !== "" || date !== undefined) {
+      onFilter({
+        category,
+        status,
+        location: location || undefined,
+        date,
+      });
+    }
+  }, [category, status, location, date, onFilter]);
 
   const handleClearFilters = () => {
     setCategory(undefined);
@@ -139,10 +143,6 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
                 />
               </PopoverContent>
             </Popover>
-          </div>
-          
-          <div className="md:col-span-4">
-            <Button onClick={handleFilter}>Apply Filters</Button>
           </div>
         </div>
       )}
