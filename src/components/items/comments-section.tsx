@@ -45,13 +45,13 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsPr
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase.from("comments").insert([
-        {
+      const { error } = await supabase
+        .from('comments')
+        .insert({
           item_id: itemId,
           user_id: user.id,
           message: message.trim(),
-        },
-      ]);
+        });
       
       if (error) {
         throw error;

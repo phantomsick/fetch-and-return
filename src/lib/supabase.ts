@@ -1,5 +1,4 @@
 
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 export { supabase };
@@ -14,7 +13,7 @@ export type Profile = {
 export type Item = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   category: 'Lost' | 'Found';
   location: string;
   image_url: string | null;

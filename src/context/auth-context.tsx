@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    setProfile(data);
+    setProfile(data as Profile);
   };
   
   const signIn = async (email: string, password: string) => {

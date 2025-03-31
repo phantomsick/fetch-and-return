@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/header";
@@ -76,7 +75,7 @@ const ItemDetail = () => {
         .from('items')
         .select(`
           *,
-          user:user_id (
+          user:profiles!user_id (
             id,
             name,
             email,
@@ -90,7 +89,7 @@ const ItemDetail = () => {
         throw error;
       }
       
-      setItem(data as Item);
+      setItem(data as unknown as Item);
     } catch (error) {
       console.error('Error fetching item:', error);
       toast({
@@ -110,7 +109,7 @@ const ItemDetail = () => {
         .from('comments')
         .select(`
           *,
-          user:user_id (
+          user:profiles!user_id (
             id,
             name,
             profile_picture
@@ -123,7 +122,7 @@ const ItemDetail = () => {
         throw error;
       }
       
-      setComments(data as Comment[]);
+      setComments(data as unknown as Comment[]);
     } catch (error) {
       console.error('Error fetching comments:', error);
     }

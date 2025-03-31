@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { ItemCard } from "@/components/items/item-card";
@@ -55,7 +54,7 @@ const Index = () => {
         .from('items')
         .select(`
           *,
-          user:user_id (
+          user:profiles!user_id (
             id,
             name,
             profile_picture
@@ -92,7 +91,7 @@ const Index = () => {
         throw error;
       }
       
-      setItems(data as Item[]);
+      setItems(data as unknown as Item[]);
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({

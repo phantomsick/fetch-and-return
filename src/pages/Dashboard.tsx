@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/header";
@@ -56,7 +55,7 @@ const Dashboard = () => {
         .from('items')
         .select(`
           *,
-          user:user_id (
+          user:profiles!user_id (
             id,
             name,
             profile_picture
@@ -69,7 +68,7 @@ const Dashboard = () => {
         throw error;
       }
       
-      setItems(data as Item[]);
+      setItems(data as unknown as Item[]);
     } catch (error) {
       console.error('Error fetching user items:', error);
       toast({

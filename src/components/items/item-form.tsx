@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,8 +118,9 @@ export function ItemForm() {
       }
       
       // Insert item into database
-      const { error, data } = await supabase.from("items").insert([
-        {
+      const { error, data } = await supabase
+        .from('items')
+        .insert({
           title,
           description,
           category,
@@ -130,8 +130,8 @@ export function ItemForm() {
           user_id: user.id,
           status: "Open",
           contact_info: contactInfo,
-        },
-      ]).select();
+        })
+        .select();
       
       if (error) {
         throw error;
