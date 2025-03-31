@@ -13,6 +13,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
+  authError: string | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -73,9 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      setAuthError(null);
+      
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
+        setAuthError(error.message);
         toast({
           title: "Authentication error",
           description: error.message,
@@ -177,7 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn, 
         signUp, 
         signOut, 
-        loading 
+        loading,
+        authError 
       }}
     >
       {children}
