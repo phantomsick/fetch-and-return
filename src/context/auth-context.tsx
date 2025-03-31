@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase, Profile } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
+import { Profile } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -102,7 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            name
+          }
+        }
+      });
       
       if (error) {
         toast({
@@ -111,28 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           variant: "destructive"
         });
         return;
-      }
-      
-      if (data.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { 
-              id: data.user.id, 
-              name, 
-              email 
-            }
-          ]);
-          
-        if (profileError) {
-          toast({
-            title: "Profile creation error",
-            description: profileError.message,
-            variant: "destructive"
-          });
-          return;
-        }
       }
       
       toast({

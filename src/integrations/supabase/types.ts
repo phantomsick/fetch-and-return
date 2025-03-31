@@ -9,6 +9,80 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      comments: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          category: string
+          contact_info: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          image_url: string | null
+          location: string
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          contact_info: string
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location: string
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          contact_info?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lost: {
         Row: {
           created_at: string
@@ -21,6 +95,27 @@ export type Database = {
         Update: {
           created_at?: string
           id?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          email: string | null
+          id: string
+          name: string | null
+          profile_picture: string | null
+        }
+        Insert: {
+          email?: string | null
+          id: string
+          name?: string | null
+          profile_picture?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: string
+          name?: string | null
+          profile_picture?: string | null
         }
         Relationships: []
       }
