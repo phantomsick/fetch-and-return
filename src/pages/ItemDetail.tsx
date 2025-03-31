@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/header";
@@ -73,15 +74,7 @@ const ItemDetail = () => {
       
       const { data, error } = await supabase
         .from('items')
-        .select(`
-          *,
-          user:profiles!user_id (
-            id,
-            name,
-            email,
-            profile_picture
-          )
-        `)
+        .select('*')
         .eq('id', itemId)
         .single();
       
@@ -89,7 +82,17 @@ const ItemDetail = () => {
         throw error;
       }
       
-      setItem(data as unknown as Item);
+      // Get user profile for this item
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user_id)
+        .single();
+      
+      setItem({
+        ...data as Item,
+        user: userError ? null : userData
+      });
     } catch (error) {
       console.error('Error fetching item:', error);
       toast({
@@ -107,14 +110,7 @@ const ItemDetail = () => {
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select(`
-          *,
-          user:profiles!user_id (
-            id,
-            name,
-            profile_picture
-          )
-        `)
+        .select('*')
         .eq('item_id', itemId)
         .order('created_at', { ascending: false });
       
@@ -122,7 +118,21 @@ const ItemDetail = () => {
         throw error;
       }
       
-      setComments(data as unknown as Comment[]);
+      // Get user profiles for comments
+      const commentsWithUsers = await Promise.all((data as Comment[]).map(async (comment) => {
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', comment.user_id)
+          .single();
+        
+        return {
+          ...comment,
+          user: userError ? null : userData
+        };
+      }));
+      
+      setComments(commentsWithUsers as Comment[]);
     } catch (error) {
       console.error('Error fetching comments:', error);
     }

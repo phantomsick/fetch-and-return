@@ -22,7 +22,7 @@ export type Item = {
   status: 'Open' | 'Resolved';
   contact_info: string;
   created_at: string;
-  user?: Profile;
+  user?: Profile | null;
 };
 
 export type Comment = {
@@ -31,5 +31,5 @@ export type Comment = {
   user_id: string;
   message: string;
   created_at: string;
-  user?: Profile;
+  user?: Profile | null;
 };

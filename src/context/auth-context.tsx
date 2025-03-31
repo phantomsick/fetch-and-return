@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/lib/supabase';
@@ -58,18 +57,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
       
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return;
+      setProfile(data as Profile);
+    } catch (error) {
+      console.error('Error in fetchProfile:', error);
     }
-    
-    setProfile(data as Profile);
   };
   
   const signIn = async (email: string, password: string) => {

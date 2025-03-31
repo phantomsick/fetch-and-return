@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { ItemCard } from "@/components/items/item-card";
@@ -52,14 +53,7 @@ const Index = () => {
       
       let query = supabase
         .from('items')
-        .select(`
-          *,
-          user:profiles!user_id (
-            id,
-            name,
-            profile_picture
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       // Apply search if provided
@@ -91,7 +85,21 @@ const Index = () => {
         throw error;
       }
       
-      setItems(data as unknown as Item[]);
+      // Get user profiles for each item
+      const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', item.user_id)
+          .single();
+        
+        return {
+          ...item,
+          user: userError ? null : userData
+        };
+      }));
+      
+      setItems(itemsWithUsers as Item[]);
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({
