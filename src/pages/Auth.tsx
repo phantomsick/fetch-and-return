@@ -6,8 +6,16 @@ import { useAuth } from "@/context/auth-context";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
+  
+  // Use a try-catch block to safely access auth context
+  let authUser = null;
+  try {
+    const { user } = useAuth();
+    authUser = user;
+  } catch (error) {
+    console.log("Auth context not available yet, waiting...");
+  }
   
   useEffect(() => {
     // Check for dark mode preference
@@ -19,10 +27,10 @@ const Auth = () => {
     }
     
     // Redirect if already logged in
-    if (user) {
+    if (authUser) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [authUser, navigate]);
   
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode.toString());
