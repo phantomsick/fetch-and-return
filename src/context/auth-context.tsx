@@ -49,13 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           await fetchProfile(session.user.id);
           
-          // If user is authenticated and trying to access auth page, redirect to home
           if (location.pathname === '/auth') {
             navigate('/');
           }
         } else {
           setProfile(null);
-          // If user is now null and it was a sign out event, redirect to auth page
           if (event === 'SIGNED_OUT') {
             navigate('/auth');
           }
@@ -72,14 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setupAuth();
   }, [navigate, location.pathname]);
   
-  // Protect routes by checking authentication
   useEffect(() => {
-    // Skip protection for auth page
     if (location.pathname === '/auth') return;
     
-    // For all other pages, check if user is authenticated
     if (!loading && !user) {
-      // Keep track of where the user was trying to go for redirect after login
       navigate('/auth');
     }
   }, [user, loading, location.pathname, navigate]);
@@ -139,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
-      // Use signUp method to initiate verification
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -160,7 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
       
-      // Return the session for OTP verification
       return data.session;
     } catch (error) {
       console.error('Sign up error:', error);
@@ -188,8 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw error;
       }
-      
-      return true;
     } catch (error: any) {
       console.error('OTP verification error:', error);
       throw error;
@@ -252,7 +242,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "You've been successfully logged out."
       });
       
-      // Navigate to auth page after sign out
       navigate('/auth');
     } catch (error) {
       console.error('Sign out error:', error);
