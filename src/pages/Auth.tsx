@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthPage } from "@/components/auth/auth-page";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/context/auth/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 

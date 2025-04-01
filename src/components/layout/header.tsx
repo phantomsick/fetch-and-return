@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/context/auth/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   DropdownMenu, 
