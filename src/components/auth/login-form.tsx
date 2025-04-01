@@ -7,7 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LockIcon, MailIcon } from 'lucide-react';
 
-export function LoginForm({ onToggleForm }: { onToggleForm: () => void }) {
+export function LoginForm({ 
+  onToggleForm, 
+  onForgotPassword 
+}: { 
+  onToggleForm: () => void;
+  onForgotPassword: () => void;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { signIn, loading } = useAuth();
@@ -47,9 +53,13 @@ export function LoginForm({ onToggleForm }: { onToggleForm: () => void }) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <a href="#" className="text-sm text-primary hover:underline">
+              <button 
+                type="button" 
+                onClick={onForgotPassword}
+                className="text-sm text-primary hover:underline"
+              >
                 Forgot password?
-              </a>
+              </button>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">

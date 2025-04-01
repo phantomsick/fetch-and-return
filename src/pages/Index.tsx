@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 const Index = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -17,6 +18,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Filters
   const [filters, setFilters] = useState<{
@@ -27,6 +29,12 @@ const Index = () => {
   }>({});
   
   useEffect(() => {
+    // Redirect if not logged in (backup check, already handled in AuthProvider)
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    
     // Check for dark mode preference
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(isDarkMode);
@@ -36,7 +44,7 @@ const Index = () => {
     }
     
     fetchItems();
-  }, []);
+  }, [user, navigate]);
   
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode.toString());
@@ -87,16 +95,24 @@ const Index = () => {
       
       // Get user profiles for each item
       const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', item.user_id)
-          .single();
-        
-        return {
-          ...item,
-          user: userError ? null : userData
-        };
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', item.user_id)
+            .single();
+          
+          return {
+            ...item,
+            user: userError ? null : userData
+          };
+        } catch (err) {
+          console.error(`Error fetching user for item ${item.id}:`, err);
+          return {
+            ...item,
+            user: null
+          };
+        }
       }));
       
       setItems(itemsWithUsers as Item[]);

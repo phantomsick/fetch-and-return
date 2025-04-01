@@ -1,19 +1,19 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<any>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  verifyOTP: (email: string, token: string, session?: any) => Promise<void>;
   loading: boolean;
   authError: string | null;
 };
@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   useEffect(() => {
     const setupAuth = async () => {
@@ -40,11 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.id);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           await fetchProfile(session.user.id);
+          
+          // If user is authenticated and trying to access auth page, redirect to home
+          if (location.pathname === '/auth') {
+            navigate('/');
+          }
         } else {
           setProfile(null);
           // If user is now null and it was a sign out event, redirect to auth page
@@ -62,7 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     setupAuth();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
+  
+  // Protect routes by checking authentication
+  useEffect(() => {
+    // Skip protection for auth page
+    if (location.pathname === '/auth') return;
+    
+    // For all other pages, check if user is authenticated
+    if (!loading && !user) {
+      // Keep track of where the user was trying to go for redirect after login
+      navigate('/auth');
+    }
+  }, [user, loading, location.pathname, navigate]);
   
   const fetchProfile = async (userId: string) => {
     try {
@@ -119,13 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
+      // Use signUp method to initiate verification
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: {
             name
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/auth`
         }
       });
       
@@ -135,13 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: error.message,
           variant: "destructive"
         });
-        return;
+        return null;
       }
       
-      toast({
-        title: "Registration successful!",
-        description: "Your account has been created successfully."
-      });
+      // Return the session for OTP verification
+      return data.session;
     } catch (error) {
       console.error('Sign up error:', error);
       toast({
@@ -149,6 +169,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const verifyOTP = async (email: string, token: string, session?: any) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup'
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -232,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp, 
         signOut,
         resetPassword,
+        verifyOTP,
         loading,
         authError 
       }}

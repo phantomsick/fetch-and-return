@@ -1,0 +1,10 @@
+
+project_id = "bqkxblcqdwyoquafdkgu"
+app_id = "cleanup-resolved-items"
+base_path = "/cleanup-resolved-items"
+override_migration = false
+
+[function.options]
+memory_size = 128
+timeout_ms = 10000
+env = ["CLEANUP_RESOLVED_ITEMS_SECRET"]

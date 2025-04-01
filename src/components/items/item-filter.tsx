@@ -6,7 +6,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Filter, X } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, X, Search } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -34,19 +34,19 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
   const [location, setLocation] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [showFilters, setShowFilters] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
 
-  // Apply filters whenever any filter value changes
-  useEffect(() => {
-    // Don't trigger on component mount (only on changes after)
-    if (category !== undefined || status !== undefined || location !== "" || date !== undefined) {
-      onFilter({
-        category,
-        status,
-        location: location || undefined,
-        date,
-      });
-    }
-  }, [category, status, location, date, onFilter]);
+  const handleApplyFilters = () => {
+    setIsFiltering(true);
+    onFilter({
+      category,
+      status,
+      location: location || undefined,
+      date,
+    });
+    // Reset filtering state after a delay to show the loading state
+    setTimeout(() => setIsFiltering(false), 500);
+  };
 
   const handleClearFilters = () => {
     setCategory(undefined);
@@ -81,68 +81,90 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
       </div>
 
       {showFilters && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <div>
-            <Select
-              value={category}
-              onValueChange={setCategory}
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div>
+              <Select
+                value={category}
+                onValueChange={setCategory}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lost">Lost</SelectItem>
+                  <SelectItem value="Found">Found</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Select
+                value={status}
+                onValueChange={setStatus}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Open">Open</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Input
+                placeholder="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleApplyFilters}
+              disabled={isFiltering}
+              className="px-4"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Lost">Lost</SelectItem>
-                <SelectItem value="Found">Found</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Select
-              value={status}
-              onValueChange={setStatus}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Open">Open</SelectItem>
-                <SelectItem value="Resolved">Resolved</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Input
-              placeholder="Location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+              {isFiltering ? (
+                <>
+                  <span className="mr-2">Filtering...</span>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Apply Filters
+                </>
+              )}
+            </Button>
           </div>
         </div>
       )}
