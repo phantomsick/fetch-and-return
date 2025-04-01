@@ -16,6 +16,7 @@ const Index = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -29,12 +30,6 @@ const Index = () => {
   }>({});
   
   useEffect(() => {
-    // Redirect if not logged in (backup check, already handled in AuthProvider)
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    
     // Check for dark mode preference
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(isDarkMode);
@@ -43,8 +38,10 @@ const Index = () => {
       document.documentElement.classList.add("dark");
     }
     
-    fetchItems();
-  }, [user, navigate]);
+    if (user) {
+      fetchItems();
+    }
+  }, [user]);
   
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode.toString());
@@ -55,9 +52,12 @@ const Index = () => {
     }
   }, [darkMode]);
   
-  const fetchItems = async (search = "") => {
+  const fetchItems = async (search = "", newFilters = filters) => {
     try {
       setLoading(true);
+      setFetchError(null);
+      
+      console.log("Fetching items with filters:", newFilters);
       
       let query = supabase
         .from('items')
@@ -70,20 +70,24 @@ const Index = () => {
       }
       
       // Apply filters if they exist
-      if (filters.category) {
-        query = query.eq('category', filters.category);
+      if (newFilters.category) {
+        console.log("Applying category filter:", newFilters.category);
+        query = query.eq('category', newFilters.category);
       }
       
-      if (filters.status) {
-        query = query.eq('status', filters.status);
+      if (newFilters.status) {
+        console.log("Applying status filter:", newFilters.status);
+        query = query.eq('status', newFilters.status);
       }
       
-      if (filters.location) {
-        query = query.ilike('location', `%${filters.location}%`);
+      if (newFilters.location) {
+        console.log("Applying location filter:", newFilters.location);
+        query = query.ilike('location', `%${newFilters.location}%`);
       }
       
-      if (filters.date) {
-        const dateStr = filters.date.toISOString().split('T')[0];
+      if (newFilters.date) {
+        const dateStr = newFilters.date.toISOString().split('T')[0];
+        console.log("Applying date filter:", dateStr);
         query = query.gte('date', `${dateStr}T00:00:00`).lte('date', `${dateStr}T23:59:59`);
       }
       
@@ -92,6 +96,8 @@ const Index = () => {
       if (error) {
         throw error;
       }
+      
+      console.log("Fetched items:", data);
       
       // Get user profiles for each item
       const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
@@ -118,6 +124,7 @@ const Index = () => {
       setItems(itemsWithUsers as Item[]);
     } catch (error) {
       console.error('Error fetching items:', error);
+      setFetchError("Failed to load items. Please try again later.");
       toast({
         title: "Error",
         description: "Failed to load items. Please try again later.",
@@ -140,8 +147,24 @@ const Index = () => {
     date?: Date;
   }) => {
     setFilters(newFilters);
-    fetchItems(searchQuery); // Refetch with current search and new filters
+    fetchItems(searchQuery, newFilters); 
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Lost & Found</h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            Please sign in to access the Lost & Found system
+          </p>
+          <Button onClick={() => navigate('/auth')}>
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -180,6 +203,17 @@ const Index = () => {
         {loading ? (
           <div className="flex justify-center items-center min-h-[400px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : fetchError ? (
+          <div className="text-center py-16 border rounded-lg bg-destructive/10 text-destructive">
+            <h3 className="text-2xl font-medium mb-2">Error Loading Items</h3>
+            <p className="mb-6">{fetchError}</p>
+            <Button 
+              variant="outline" 
+              onClick={() => fetchItems(searchQuery, filters)}
+            >
+              Try Again
+            </Button>
           </div>
         ) : items.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

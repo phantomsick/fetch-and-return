@@ -25,10 +25,12 @@ serve(async (req) => {
     cutoffTime.setHours(cutoffTime.getHours() - 48);
     const cutoffTimeString = cutoffTime.toISOString();
 
+    console.log(`Looking for items resolved before ${cutoffTimeString}`);
+
     // Find items that have been resolved for more than 48 hours
     const { data: itemsToDelete, error: fetchError } = await supabase
       .from("items")
-      .select("id, title, user_id")
+      .select("id, title, user_id, category")
       .eq("status", "Resolved")
       .lt("resolved_at", cutoffTimeString);
 
@@ -41,11 +43,14 @@ serve(async (req) => {
     }
 
     if (!itemsToDelete || itemsToDelete.length === 0) {
+      console.log("No items to delete at this time");
       return new Response(
         JSON.stringify({ message: "No items to delete" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Found ${itemsToDelete.length} items to delete:`, itemsToDelete);
 
     // Delete the items
     const itemIds = itemsToDelete.map(item => item.id);
@@ -60,6 +65,28 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to delete items" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Send notifications to users about the deletions
+    for (const item of itemsToDelete) {
+      try {
+        // Get user email for notification
+        const { data: userData, error: userError } = await supabase
+          .from("profiles")
+          .select("email, name")
+          .eq("id", item.user_id)
+          .single();
+
+        if (userError || !userData || !userData.email) {
+          console.error(`Could not find user ${item.user_id} for notification:`, userError);
+          continue;
+        }
+
+        console.log(`Would send deletion confirmation email to: ${userData.email} for item: ${item.title}`);
+        // In a real app, you would send an actual email notification here
+      } catch (err) {
+        console.error(`Error processing notification for item ${item.id}:`, err);
+      }
     }
 
     return new Response(

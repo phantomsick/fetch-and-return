@@ -33,11 +33,11 @@ serve(async (req) => {
     // Get the item details
     const { data: item, error: itemError } = await supabase
       .from("items")
-      .select("*, profiles(*)")
+      .select("*, profiles(email, name)")
       .eq("id", itemId)
       .single();
 
-    if (itemError) {
+    if (itemError || !item) {
       console.error("Error fetching item:", itemError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch item details" }),
@@ -45,16 +45,50 @@ serve(async (req) => {
       );
     }
 
-    // Schedule a background task to send notification after 24 hours
-    // In a real implementation, you would use a proper job scheduler
-    // For now, we'll log the information that would be sent
+    // Get user email for notification
+    const userEmail = item.profiles?.email;
+    const userName = item.profiles?.name || "User";
+    
+    if (!userEmail) {
+      console.error(`No email found for user ${item.user_id}`);
+      return new Response(
+        JSON.stringify({ error: "No email found for user" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log(`Scheduled notification for item ${itemId}. Will be deleted in 48 hours.`);
-    console.log(`Would notify user ${item.user_id} about deletion of item: ${item.title}`);
+    console.log(`Would send email to ${userEmail} for user ${userName} about deletion of item: ${item.title}`);
+    
+    // In a real production environment, you would queue an email to be sent here
+    // For demonstration purposes, we're just logging what would happen
+
+    // Calculate the actual deletion time (48 hours from now)
+    const deletionTime = new Date();
+    deletionTime.setHours(deletionTime.getHours() + 48);
+    const formattedDeletionTime = deletionTime.toLocaleString();
+
+    // Log the email that would be sent
+    const emailSubject = `Your ${item.category} item will be deleted soon`;
+    const emailBody = `
+      Dear ${userName},
+      
+      Your ${item.category} item "${item.title}" that was marked as resolved 
+      will be automatically deleted on ${formattedDeletionTime}.
+      
+      If you need to keep this record, please log in and change its status back to "Open".
+      
+      Thank you for using our Lost & Found service.
+    `;
+
+    console.log("Email subject:", emailSubject);
+    console.log("Email body:", emailBody);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Deletion notification scheduled" 
+        message: "Deletion notification scheduled",
+        scheduledDeletion: formattedDeletionTime
       }),
       { 
         status: 200, 

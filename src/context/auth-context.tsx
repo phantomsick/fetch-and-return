@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/lib/supabase';
@@ -180,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw error;
       }
+      // Removed return true to match the Promise<void> type
     } catch (error: any) {
       console.error('OTP verification error:', error);
       throw error;

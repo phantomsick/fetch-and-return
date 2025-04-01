@@ -6,7 +6,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Filter, X, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, X, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -45,7 +45,7 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
       date,
     });
     // Reset filtering state after a delay to show the loading state
-    setTimeout(() => setIsFiltering(false), 500);
+    setTimeout(() => setIsFiltering(false), 1000);
   };
 
   const handleClearFilters = () => {
@@ -55,6 +55,9 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
     setDate(undefined);
     onFilter({});
   };
+
+  // Check if any filters are applied
+  const hasActiveFilters = !!(category || status || location || date);
 
   return (
     <div className="mb-6">
@@ -68,7 +71,7 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
           {showFilters ? "Hide Filters" : "Show Filters"}
         </Button>
         
-        {(category || status || location || date) && (
+        {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
@@ -155,8 +158,8 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
             >
               {isFiltering ? (
                 <>
-                  <span className="mr-2">Filtering...</span>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Filtering...
                 </>
               ) : (
                 <>
