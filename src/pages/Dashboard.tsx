@@ -1,14 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase, Item } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/context/auth/auth-context";
 import { Header } from "@/components/layout/header";
-import { Item, supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/items/item-card";
 import { Loader2, Plus } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,7 +19,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Check for dark mode preference
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(isDarkMode);
     
@@ -28,7 +26,6 @@ const Dashboard = () => {
       document.documentElement.classList.add("dark");
     }
     
-    // Redirect if not logged in
     if (!user) {
       navigate("/auth");
       return;
@@ -62,7 +59,6 @@ const Dashboard = () => {
         throw error;
       }
       
-      // Get user profiles for each item
       const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
         const { data: userData, error: userError } = await supabase
           .from('profiles')

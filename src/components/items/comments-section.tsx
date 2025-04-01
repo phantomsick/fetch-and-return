@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useAuth } from '@/context/auth-context';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Comment, supabase } from '@/lib/supabase';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/auth/auth-context";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Comment, supabase } from "@/lib/supabase";
 import { formatDistanceToNow } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from 'lucide-react';
 
 interface CommentsSectionProps {
