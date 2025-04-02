@@ -1,236 +1,287 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase, Item } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth/auth-context";
-import { Header } from "@/components/layout/header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ItemCard } from "@/components/items/item-card";
-import { Loader2, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, User, Mail, Camera, LogOut } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 const Dashboard = () => {
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [name, setName] = useState(profile?.name || "");
+  const [profilePicture, setProfilePicture] = useState<string | null>(profile?.profile_picture || null);
   
-  const [darkMode, setDarkMode] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    const isDarkMode = localStorage.getItem("darkMode") === "true";
-    setDarkMode(isDarkMode);
-    
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    }
-    
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    
-    fetchUserItems();
-  }, [user, navigate]);
-  
-  useEffect(() => {
-    localStorage.setItem("darkMode", darkMode.toString());
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-  
-  const fetchUserItems = async () => {
+  const handleUpdateProfile = async () => {
     if (!user) return;
     
+    setIsLoading(true);
+    
     try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', item.user_id)
-          .single();
+      const { error } = await supabase
+        .from('profiles')
+        .update({ name })
+        .eq('id', user.id);
         
-        return {
-          ...item,
-          user: userError ? null : userData
-        };
-      }));
+      if (error) throw error;
       
-      setItems(itemsWithUsers as Item[]);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+      
     } catch (error) {
-      console.error('Error fetching user items:', error);
+      console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "Failed to load your items. Please try again later.",
-        variant: "destructive",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
   
-  const filterItemsByCategory = (category: string) => {
-    return items.filter(item => item.category === category);
+  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    setIsUploading(true);
+    
+    try {
+      // Create a storage bucket if needed
+      const { error: bucketError } = await supabase
+        .storage
+        .createBucket('avatars', {
+          public: true,
+          fileSizeLimit: 1024 * 1024, // 1MB
+        });
+        
+      // Upload file
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase
+        .storage
+        .from('avatars')
+        .upload(fileName, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: urlData } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+        
+      const publicUrl = urlData.publicUrl;
+      
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ profile_picture: publicUrl })
+        .eq('id', user.id);
+        
+      if (updateError) throw updateError;
+      
+      setProfilePicture(publicUrl);
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully."
+      });
+      
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile picture. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
   
-  const filterItemsByStatus = (status: string) => {
-    return items.filter(item => item.status === status);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/auth");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
-
+  
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+  
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Button onClick={() => navigate("/auth")}>Sign In</Button>
+      </div>
+    );
+  }
+  
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header setDarkMode={setDarkMode} darkMode={darkMode} />
-      
-      <main className="flex-1 container py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">My Items</h1>
-            <p className="text-muted-foreground">
-              Manage your lost and found items
-            </p>
-          </div>
-          
-          <Button 
-            onClick={() => navigate("/create")}
-            className="mt-4 md:mt-0"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Report New Item
-          </Button>
-        </div>
+    <div className="container py-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
         
-        <Tabs defaultValue="all">
+        <Tabs defaultValue="profile">
           <TabsList className="mb-6">
-            <TabsTrigger value="all">All Items</TabsTrigger>
-            <TabsTrigger value="lost">Lost Items</TabsTrigger>
-            <TabsTrigger value="found">Found Items</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
           
-          {loading ? (
-            <div className="flex justify-center items-center min-h-[400px]">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Update your profile information and how others see you.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={profilePicture || ""} alt={name} />
+                    <AvatarFallback className="text-lg">{getInitials(name)}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 space-y-2">
+                    <h3 className="font-medium">Profile Picture</h3>
+                    <p className="text-sm text-muted-foreground">
+                      This will be displayed on your profile and in comments.
+                    </p>
+                    
+                    <div className="flex items-center">
+                      <Input
+                        type="file"
+                        id="avatar"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleProfilePictureChange}
+                      />
+                      <Label htmlFor="avatar" className="cursor-pointer">
+                        <Button type="button" variant="outline" size="sm" asChild>
+                          <span>
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="mr-2 h-4 w-4" />
+                                Change Avatar
+                              </>
+                            )}
+                          </span>
+                        </Button>
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    <User className="inline-block mr-2 h-4 w-4" />
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    <Mail className="inline-block mr-2 h-4 w-4" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    value={user.email || ""}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your email address cannot be changed.
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  onClick={handleUpdateProfile}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="security">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Password</CardTitle>
+                  <CardDescription>
+                    Change your password to keep your account secure.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResetPasswordForm />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sign Out</CardTitle>
+                  <CardDescription>
+                    Sign out from your account on this device.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    onClick={handleLogout}
+                    variant="destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <>
-              <TabsContent value="all">
-                {items.length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {items.map((item) => (
-                      <ItemCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 border rounded-lg bg-muted/30">
-                    <h3 className="text-xl font-medium mb-2">No items yet</h3>
-                    <p className="text-muted-foreground mb-6">
-                      You haven't reported any lost or found items yet.
-                    </p>
-                    <Button onClick={() => navigate("/create")}>
-                      Report an Item
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="lost">
-                {filterItemsByCategory("Lost").length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filterItemsByCategory("Lost").map((item) => (
-                      <ItemCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 border rounded-lg bg-muted/30">
-                    <h3 className="text-xl font-medium mb-2">No lost items</h3>
-                    <p className="text-muted-foreground mb-6">
-                      You haven't reported any lost items yet.
-                    </p>
-                    <Button onClick={() => navigate("/create")}>
-                      Report a Lost Item
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="found">
-                {filterItemsByCategory("Found").length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filterItemsByCategory("Found").map((item) => (
-                      <ItemCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 border rounded-lg bg-muted/30">
-                    <h3 className="text-xl font-medium mb-2">No found items</h3>
-                    <p className="text-muted-foreground mb-6">
-                      You haven't reported any found items yet.
-                    </p>
-                    <Button onClick={() => navigate("/create")}>
-                      Report a Found Item
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="open">
-                {filterItemsByStatus("Open").length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filterItemsByStatus("Open").map((item) => (
-                      <ItemCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 border rounded-lg bg-muted/30">
-                    <p className="text-muted-foreground">
-                      You don't have any open items.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="resolved">
-                {filterItemsByStatus("Resolved").length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filterItemsByStatus("Resolved").map((item) => (
-                      <ItemCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 border rounded-lg bg-muted/30">
-                    <p className="text-muted-foreground">
-                      You don't have any resolved items.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-            </>
-          )}
+          </TabsContent>
         </Tabs>
-      </main>
-      
-      <footer className="border-t py-6 bg-muted/30">
-        <div className="container text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Lost & Found App. All rights reserved.
-        </div>
-      </footer>
+      </div>
     </div>
   );
 };

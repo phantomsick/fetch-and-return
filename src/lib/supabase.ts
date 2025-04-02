@@ -51,3 +51,29 @@ export const getResolutionActionText = (category: 'Lost' | 'Found'): string => {
     return "Mark as Claimed by Owner";
   }
 };
+
+// Function to get appropriate reopen message based on category
+export const getReopenMessage = (category: 'Lost' | 'Found'): string => {
+  if (category === 'Lost') {
+    return "Item is still missing";
+  } else {
+    return "Item is available again";
+  }
+};
+
+// Function to get appropriate reopen action text based on category
+export const getReopenActionText = (category: 'Lost' | 'Found'): string => {
+  if (category === 'Lost') {
+    return "Reopen as Still Missing";
+  } else {
+    return "Reopen as Available";
+  }
+};
+
+// Function to check if an item can be reopened (within 48 hours of being resolved)
+export const canReopenItem = (resolvedDate: string): boolean => {
+  const now = new Date();
+  const resolvedTime = new Date(resolvedDate);
+  const diffInHours = (now.getTime() - resolvedTime.getTime()) / (1000 * 60 * 60);
+  return diffInHours <= 48;
+};

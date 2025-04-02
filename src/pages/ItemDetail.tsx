@@ -1,13 +1,30 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase, Item, Comment, getResolutionMessage, getResolutionActionText } from "@/lib/supabase";
+import { 
+  supabase, 
+  Item, 
+  Comment, 
+  getResolutionMessage, 
+  getResolutionActionText,
+  getReopenMessage,
+  getReopenActionText,
+  canReopenItem
+} from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, User, Calendar, Phone, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
+import { Loader2, MapPin, User, Calendar, Phone, AlertTriangle, CheckCircle2, Trash2, RefreshCw } from "lucide-react";
 import { CommentsSection } from "@/components/items/comments-section";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 import { useAuth } from "@/context/auth/auth-context";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,8 +35,11 @@ const ItemDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [resolvedDate, setResolvedDate] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchItem = async () => {
@@ -61,6 +81,12 @@ const ItemDetail = () => {
         } as Item;
         
         setItem(itemWithProfile);
+        
+        // For resolved items, check when it was resolved
+        if (data.status === 'Resolved') {
+          // Get audit logs or use created_at as a fallback
+          setResolvedDate(data.created_at);
+        }
         
         // Fetch comments
         const { data: commentsData, error: commentsError } = await supabase
@@ -126,6 +152,7 @@ const ItemDetail = () => {
       });
       
       setItem({ ...item, status: 'Resolved' });
+      setResolvedDate(new Date().toISOString());
     } catch (error) {
       console.error('Error marking item as resolved:', error);
       toast({
@@ -138,7 +165,45 @@ const ItemDetail = () => {
     }
   };
 
-  const handleDeleteClick = async () => {
+  const handleReopenClick = async () => {
+    if (!item || !resolvedDate || !canReopenItem(resolvedDate)) return;
+    
+    setIsReopening(true);
+    
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ status: 'Open' })
+        .eq('id', item.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Item Reopened",
+        description: getReopenMessage(item.category),
+      });
+      
+      setItem({ ...item, status: 'Open' });
+      setResolvedDate(null);
+    } catch (error) {
+      console.error('Error reopening item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reopen the item. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
     if (!item) return;
     
     setIsDeleting(true);
@@ -169,7 +234,8 @@ const ItemDetail = () => {
         description: "The item has been successfully deleted.",
       });
       
-      // Redirect to the home page
+      // Close the dialog and redirect to the home page
+      setShowDeleteDialog(false);
       navigate('/');
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -215,6 +281,7 @@ const ItemDetail = () => {
   });
   
   const fullDate = format(new Date(item.date || item.created_at), 'PPP');
+  const canReopen = item.status === 'Resolved' && resolvedDate && canReopenItem(resolvedDate);
   
   return (
     <div className="container py-8">
@@ -316,24 +383,47 @@ const ItemDetail = () => {
           )}
           
           {item.status === 'Resolved' && user?.id === item.user_id && (
-            <Button 
-              variant="destructive"
-              onClick={handleDeleteClick}
-              disabled={isDeleting}
-              className="w-full mt-4"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Item
-                </>
+            <div className="space-y-4 mt-4">
+              {canReopen && (
+                <Button 
+                  onClick={handleReopenClick}
+                  disabled={isReopening}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {isReopening ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Reopening...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      {getReopenActionText(item.category)}
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+              
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="w-full"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Item
+                  </>
+                )}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -345,6 +435,37 @@ const ItemDetail = () => {
           onCommentAdded={handleCommentAdded} 
         />
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this item?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the item and remove all associated comments.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
