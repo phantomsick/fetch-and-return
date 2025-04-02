@@ -1,8 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase, Item, Comment, getResolutionMessage, getResolutionActionText, markItemAsResolved } from "@/lib/supabase";
+import { supabase, Item, Comment, getResolutionMessage, getResolutionActionText } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, User, Calendar, Phone, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, MapPin, User, Calendar, Phone, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { CommentsSection } from "@/components/items/comments-section";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
@@ -17,6 +18,7 @@ const ItemDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   
   useEffect(() => {
@@ -46,18 +48,47 @@ const ItemDetail = () => {
           return;
         }
         
-        setItem(data as Item);
+        // Fetch the user profile associated with this item
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user_id)
+          .single();
+          
+        const itemWithProfile = {
+          ...data,
+          user: profileData || null
+        } as Item;
         
+        setItem(itemWithProfile);
+        
+        // Fetch comments
         const { data: commentsData, error: commentsError } = await supabase
           .from('comments')
-          .select('*, user:profiles(*)')
+          .select('*')
           .eq('item_id', id)
           .order('created_at', { ascending: false });
         
         if (commentsError) {
           console.error("Error fetching comments:", commentsError);
-        } else {
-          setComments(commentsData as Comment[]);
+        } else if (commentsData) {
+          // Fetch profile data for each comment
+          const commentsWithProfiles = await Promise.all(
+            commentsData.map(async (comment) => {
+              const { data: userProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', comment.user_id)
+                .single();
+                
+              return {
+                ...comment,
+                user: userProfile || null
+              } as Comment;
+            })
+          );
+          
+          setComments(commentsWithProfiles);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load item.");
@@ -79,24 +110,77 @@ const ItemDetail = () => {
     
     setIsResolving(true);
     
-    const success = await markItemAsResolved(item.id);
-    
-    if (success) {
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ status: 'Resolved' })
+        .eq('id', item.id);
+      
+      if (error) {
+        throw error;
+      }
+      
       toast({
         title: "Item Resolved",
         description: getResolutionMessage(item.category),
       });
       
       setItem({ ...item, status: 'Resolved' });
-    } else {
+    } catch (error) {
+      console.error('Error marking item as resolved:', error);
       toast({
         title: "Error",
         description: "Failed to mark item as resolved. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsResolving(false);
     }
+  };
+
+  const handleDeleteClick = async () => {
+    if (!item) return;
     
-    setIsResolving(false);
+    setIsDeleting(true);
+    
+    try {
+      // First delete all comments associated with this item
+      const { error: commentsError } = await supabase
+        .from('comments')
+        .delete()
+        .eq('item_id', item.id);
+      
+      if (commentsError) {
+        throw commentsError;
+      }
+      
+      // Then delete the item
+      const { error: itemError } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', item.id);
+      
+      if (itemError) {
+        throw itemError;
+      }
+      
+      toast({
+        title: "Item Deleted",
+        description: "The item has been successfully deleted.",
+      });
+      
+      // Redirect to the home page
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the item. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
   
   const handleCommentAdded = async (newComment: Comment) => {
@@ -165,7 +249,7 @@ const ItemDetail = () => {
           
           <div className="flex items-center text-muted-foreground mb-2">
             <User className="mr-2 h-4 w-4" />
-            <span>{item.user_id}</span>
+            <span>{item.user?.name || "Anonymous"}</span>
           </div>
           
           <div className="flex items-center text-muted-foreground mb-2">
@@ -184,23 +268,44 @@ const ItemDetail = () => {
           </div>
           
           {item.status === 'Open' && user?.id === item.user_id && (
-            <Button 
-              onClick={handleResolveClick}
-              disabled={isResolving}
-              className="w-full"
-            >
-              {isResolving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Resolving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  {getResolutionActionText(item.category)}
-                </>
-              )}
-            </Button>
+            <div className="space-y-4">
+              <Button 
+                onClick={handleResolveClick}
+                disabled={isResolving}
+                className="w-full"
+              >
+                {isResolving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Resolving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {getResolutionActionText(item.category)}
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="w-full"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Item
+                  </>
+                )}
+              </Button>
+            </div>
           )}
           
           {item.status === 'Resolved' && (
@@ -208,6 +313,27 @@ const ItemDetail = () => {
               <CheckCircle2 className="mr-2 h-4 w-4 inline-block align-middle" />
               <span className="align-middle">This item has been marked as resolved.</span>
             </div>
+          )}
+          
+          {item.status === 'Resolved' && user?.id === item.user_id && (
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              className="w-full mt-4"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Item
+                </>
+              )}
+            </Button>
           )}
         </div>
       </div>

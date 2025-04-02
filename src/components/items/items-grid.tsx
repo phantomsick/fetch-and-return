@@ -41,7 +41,7 @@ export function ItemsGrid({ searchQuery, filters, userId }: ItemsGridProps) {
       
       let query = supabase
         .from('items')
-        .select('*, user:profiles(*)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       // Apply search if provided
@@ -77,8 +77,28 @@ export function ItemsGrid({ searchQuery, filters, userId }: ItemsGridProps) {
         throw error;
       }
       
-      console.log("Fetched items:", data);
-      setItems(data as Item[]);
+      // Fetch user profiles separately for each item
+      if (data && data.length > 0) {
+        const itemsWithProfiles = await Promise.all(
+          data.map(async (item) => {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', item.user_id)
+              .single();
+            
+            return {
+              ...item,
+              user: profileData || null
+            } as Item;
+          })
+        );
+        
+        console.log("Fetched items with profiles:", itemsWithProfiles);
+        setItems(itemsWithProfiles);
+      } else {
+        setItems([]);
+      }
     } catch (error) {
       console.error('Error fetching items:', error);
       setFetchError("Failed to load items. Please try again later.");

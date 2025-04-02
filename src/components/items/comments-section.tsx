@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import { useAuth } from "@/context/auth/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 interface CommentsSectionProps {
   itemId: string;
   comments: Comment[];
-  onCommentAdded: () => void;
+  onCommentAdded: (comment: Comment) => void;
 }
 
 export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSectionProps) {
@@ -42,7 +43,7 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('comments')
         .insert([
           {
@@ -50,14 +51,28 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
             user_id: user.id,
             message: newComment.trim(),
           }
-        ]);
+        ])
+        .select()
+        .single();
       
       if (error) {
         throw error;
       }
       
+      // Fetch the user profile for the new comment
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      const newCommentWithProfile = {
+        ...data,
+        user: profileData || null
+      } as Comment;
+      
       setNewComment('');
-      onCommentAdded();
+      onCommentAdded(newCommentWithProfile);
       
       toast({
         title: "Comment added",
