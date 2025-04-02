@@ -17,3 +17,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storageKey: 'lost-and-found-auth-state'
   }
 });
+
+// Initialize avatars bucket
+export const initializeStorage = async () => {
+  try {
+    if (!supabase.auth.getSession()) {
+      // Only authenticated users can call this function
+      return;
+    }
+    
+    await supabase.functions.invoke('create-avatars-bucket');
+    console.log('Storage initialized successfully');
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+};

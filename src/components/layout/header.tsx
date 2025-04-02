@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Moon, Sun, Menu, Search, PlusCircle, User, LogOut, Home, MapPin } from "lucide-react";
+import { Moon, Sun, Menu, Search, PlusCircle, User, LogOut, Home, MapPin, Package } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -96,6 +96,14 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                   <Button 
                     variant="ghost" 
                     className="justify-start"
+                    onClick={() => navigate("/my-items")}
+                  >
+                    <Package className="mr-2 h-5 w-5" />
+                    My Items
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="justify-start"
                     onClick={() => navigate("/create")}
                   >
                     <PlusCircle className="mr-2 h-5 w-5" />
@@ -146,7 +154,7 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/my-items")}
               >
                 My Items
               </Button>
@@ -183,13 +191,17 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
                     {profile?.name && <p className="font-medium">{profile.name}</p>}
-                    {profile?.email && <p className="text-sm text-muted-foreground">{profile.email}</p>}
+                    {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
                   </div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   <User className="mr-2 h-4 w-4" />
                   <span>My Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/my-items")}>
+                  <Package className="mr-2 h-4 w-4" />
+                  <span>My Items</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

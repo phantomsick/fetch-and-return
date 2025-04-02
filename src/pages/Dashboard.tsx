@@ -2,16 +2,37 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, initializeStorage } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, User, Mail, Camera, LogOut } from "lucide-react";
+import { Loader2, User, Mail, Camera, LogOut, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+// Password schema without current password requirement
+const passwordSchema = z.object({
+  newPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  confirmPassword: z.string().min(6, { message: "Please confirm your password" }),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 const Dashboard = () => {
   const { user, profile, signOut } = useAuth();
@@ -27,6 +48,9 @@ const Dashboard = () => {
       setName(profile.name || "");
       setProfilePicture(profile.profile_picture);
     }
+    
+    // Initialize storage buckets
+    initializeStorage();
   }, [profile]);
 
   const handleUpdateProfile = async () => {
@@ -66,31 +90,6 @@ const Dashboard = () => {
     setIsUploading(true);
     
     try {
-      // Check if the avatars bucket exists, create it if not
-      try {
-        const { data: bucketData } = await supabase
-          .storage
-          .getBucket('avatars');
-          
-        if (!bucketData) {
-          // Create the bucket if it doesn't exist
-          await supabase
-            .storage
-            .createBucket('avatars', {
-              public: true,
-              fileSizeLimit: 1024 * 1024, // 1MB
-            });
-        }
-      } catch (error) {
-        // Bucket probably doesn't exist, create it
-        await supabase
-          .storage
-          .createBucket('avatars', {
-            public: true,
-            fileSizeLimit: 1024 * 1024, // 1MB
-          });
-      }
-        
       // Upload file
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -157,6 +156,47 @@ const Dashboard = () => {
     }
   };
   
+  // Password reset functionality
+  const form = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onSubmit = async (data: PasswordFormValues) => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: data.newPassword,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully.",
+      });
+      
+      form.reset();
+    } catch (error: any) {
+      console.error("Password update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const handleLogout = async () => {
     try {
       await signOut();
@@ -186,11 +226,20 @@ const Dashboard = () => {
   return (
     <div className="container py-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">My Profile</h1>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </div>
         
         <Tabs defaultValue="profile">
           <TabsList className="mb-6">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="profile">Profile Information</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
           
@@ -287,6 +336,12 @@ const Dashboard = () => {
                     "Save Changes"
                   )}
                 </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/my-items")}
+                >
+                  View My Items
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -295,13 +350,62 @@ const Dashboard = () => {
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Password</CardTitle>
+                  <CardTitle>Change Password</CardTitle>
                   <CardDescription>
-                    Change your password to keep your account secure.
+                    Update your password to keep your account secure.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResetPasswordForm />
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password" 
+                                placeholder="Enter new password" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password" 
+                                placeholder="Confirm new password" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          "Update Password"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
               
