@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,13 @@ const Dashboard = () => {
   const [name, setName] = useState(profile?.name || "");
   const [profilePicture, setProfilePicture] = useState<string | null>(profile?.profile_picture || null);
   
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setProfilePicture(profile.profile_picture);
+    }
+  }, [profile]);
+
   const handleUpdateProfile = async () => {
     if (!user) return;
     
@@ -59,22 +66,59 @@ const Dashboard = () => {
     setIsUploading(true);
     
     try {
-      // Create a storage bucket if needed
-      const { error: bucketError } = await supabase
-        .storage
-        .createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 1024 * 1024, // 1MB
-        });
+      // Check if the avatars bucket exists, create it if not
+      try {
+        const { data: bucketData } = await supabase
+          .storage
+          .getBucket('avatars');
+          
+        if (!bucketData) {
+          // Create the bucket if it doesn't exist
+          await supabase
+            .storage
+            .createBucket('avatars', {
+              public: true,
+              fileSizeLimit: 1024 * 1024, // 1MB
+            });
+        }
+      } catch (error) {
+        // Bucket probably doesn't exist, create it
+        await supabase
+          .storage
+          .createBucket('avatars', {
+            public: true,
+            fileSizeLimit: 1024 * 1024, // 1MB
+          });
+      }
         
       // Upload file
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
+      // Remove old avatar if exists
+      if (profile?.profile_picture) {
+        const oldFileName = profile.profile_picture.split('/').pop();
+        if (oldFileName) {
+          try {
+            await supabase
+              .storage
+              .from('avatars')
+              .remove([oldFileName]);
+          } catch (error) {
+            console.error("Failed to remove old avatar:", error);
+            // Continue with upload even if removal fails
+          }
+        }
+      }
+      
+      // Upload new file
       const { error: uploadError } = await supabase
         .storage
         .from('avatars')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
         
       if (uploadError) throw uploadError;
       
@@ -101,11 +145,11 @@ const Dashboard = () => {
         description: "Your profile picture has been updated successfully."
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile picture:", error);
       toast({
         title: "Error",
-        description: "Failed to update profile picture. Please try again.",
+        description: error.message || "Failed to update profile picture. Please try again.",
         variant: "destructive"
       });
     } finally {

@@ -91,7 +91,7 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                     onClick={() => navigate("/dashboard")}
                   >
                     <User className="mr-2 h-5 w-5" />
-                    My Items
+                    My Profile
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -189,7 +189,7 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   <User className="mr-2 h-4 w-4" />
-                  <span>My Items</span>
+                  <span>My Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

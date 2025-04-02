@@ -18,52 +18,62 @@ export const useAuthProvider = () => {
   
   useEffect(() => {
     const setupAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      
-      if (data.session?.user) {
-        const userProfile = await fetchProfile(data.session.user.id);
-        if (userProfile) {
-          setProfile(userProfile);
-        }
-      }
-      
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+      try {
+        // Set up auth state listener first
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log("Auth state changed:", event, session?.user?.id);
+          
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            // Defer fetching profile to avoid auth deadlock
+            setTimeout(async () => {
+              const userProfile = await fetchProfile(session.user.id);
+              if (userProfile) {
+                setProfile(userProfile);
+              }
+            }, 0);
+            
+            if (location.pathname === '/auth') {
+              navigate('/');
+            }
+          } else {
+            setProfile(null);
+            if (event === 'SIGNED_OUT') {
+              navigate('/auth');
+            }
+          }
+        });
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        // Then check for existing session
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
         
-        if (session?.user) {
-          const userProfile = await fetchProfile(session.user.id);
+        if (data.session?.user) {
+          const userProfile = await fetchProfile(data.session.user.id);
           if (userProfile) {
             setProfile(userProfile);
           }
-          
-          if (location.pathname === '/auth') {
-            navigate('/');
-          }
-        } else {
-          setProfile(null);
-          if (event === 'SIGNED_OUT') {
-            navigate('/auth');
-          }
         }
-      });
-
-      setLoading(false);
-      
-      return () => {
-        authListener.subscription.unsubscribe();
-      };
+        
+        setLoading(false);
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth setup error:", error);
+        setLoading(false);
+      }
     };
     
     setupAuth();
   }, [navigate, location.pathname]);
   
   useEffect(() => {
-    if (location.pathname === '/auth') return;
+    if (location.pathname === '/auth' || location.pathname === '/') return;
     
     if (!loading && !user) {
       navigate('/auth');
