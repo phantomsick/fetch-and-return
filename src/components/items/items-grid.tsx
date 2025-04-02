@@ -25,11 +25,12 @@ export function ItemsGrid({ searchQuery, filters, userId }: ItemsGridProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // Re-fetch items when filters or search query changes
   useEffect(() => {
     if (userId) {
       fetchItems(searchQuery, filters);
     }
-  }, [userId]);
+  }, [userId, searchQuery, filters]);
   
   const fetchItems = async (search = "", newFilters = filters) => {
     try {
@@ -40,7 +41,7 @@ export function ItemsGrid({ searchQuery, filters, userId }: ItemsGridProps) {
       
       let query = supabase
         .from('items')
-        .select('*')
+        .select('*, user:profiles(*)')
         .order('created_at', { ascending: false });
       
       // Apply search if provided
@@ -77,30 +78,7 @@ export function ItemsGrid({ searchQuery, filters, userId }: ItemsGridProps) {
       }
       
       console.log("Fetched items:", data);
-      
-      // Get user profiles for each item
-      const itemsWithUsers = await Promise.all((data as Item[]).map(async (item) => {
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', item.user_id)
-            .single();
-          
-          return {
-            ...item,
-            user: userError ? null : userData
-          };
-        } catch (err) {
-          console.error(`Error fetching user for item ${item.id}:`, err);
-          return {
-            ...item,
-            user: null
-          };
-        }
-      }));
-      
-      setItems(itemsWithUsers as Item[]);
+      setItems(data as Item[]);
     } catch (error) {
       console.error('Error fetching items:', error);
       setFetchError("Failed to load items. Please try again later.");

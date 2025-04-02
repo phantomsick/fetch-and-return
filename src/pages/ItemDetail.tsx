@@ -17,6 +17,7 @@ const ItemDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
   
   useEffect(() => {
     const fetchItem = async () => {
@@ -46,6 +47,18 @@ const ItemDetail = () => {
         }
         
         setItem(data as Item);
+        
+        const { data: commentsData, error: commentsError } = await supabase
+          .from('comments')
+          .select('*, user:profiles(*)')
+          .eq('item_id', id)
+          .order('created_at', { ascending: false });
+        
+        if (commentsError) {
+          console.error("Error fetching comments:", commentsError);
+        } else {
+          setComments(commentsData as Comment[]);
+        }
       } catch (err: any) {
         setError(err.message || "Failed to load item.");
         toast({
@@ -74,7 +87,6 @@ const ItemDetail = () => {
         description: getResolutionMessage(item.category),
       });
       
-      // Optimistically update the item's status
       setItem({ ...item, status: 'Resolved' });
     } else {
       toast({
@@ -85,6 +97,10 @@ const ItemDetail = () => {
     }
     
     setIsResolving(false);
+  };
+  
+  const handleCommentAdded = async (newComment: Comment) => {
+    setComments(prevComments => [newComment, ...prevComments]);
   };
   
   if (loading) {
@@ -125,7 +141,6 @@ const ItemDetail = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Item Image */}
         <div>
           {item.image_url ? (
             <img
@@ -140,7 +155,6 @@ const ItemDetail = () => {
           )}
         </div>
         
-        {/* Item Details */}
         <div>
           <h1 className="text-3xl font-semibold mb-4">{item.title}</h1>
           
@@ -149,12 +163,12 @@ const ItemDetail = () => {
             <span>{item.location}</span>
           </div>
           
-          <div className="flex items-center text-muted-foreground mb-4">
+          <div className="flex items-center text-muted-foreground mb-2">
             <User className="mr-2 h-4 w-4" />
             <span>{item.user_id}</span>
           </div>
           
-          <div className="flex items-center text-muted-foreground mb-4">
+          <div className="flex items-center text-muted-foreground mb-2">
             <Calendar className="mr-2 h-4 w-4" />
             <span>{fullDate} ({formattedDate})</span>
           </div>
@@ -198,9 +212,12 @@ const ItemDetail = () => {
         </div>
       </div>
       
-      {/* Comments Section */}
       <div className="mt-8">
-        <CommentsSection itemId={id} />
+        <CommentsSection 
+          itemId={id || ""} 
+          comments={comments} 
+          onCommentAdded={handleCommentAdded} 
+        />
       </div>
     </div>
   );

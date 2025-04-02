@@ -38,14 +38,25 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
 
   const handleApplyFilters = () => {
     setIsFiltering(true);
-    onFilter({
-      category,
-      status,
-      location: location || undefined,
-      date,
-    });
+    
+    // Create a new object with only the defined filters
+    const activeFilters: {
+      category?: string;
+      status?: string;
+      location?: string;
+      date?: Date;
+    } = {};
+    
+    if (category) activeFilters.category = category;
+    if (status) activeFilters.status = status;
+    if (location) activeFilters.location = location;
+    if (date) activeFilters.date = date;
+    
+    console.log("Applying filters:", activeFilters);
+    onFilter(activeFilters);
+    
     // Reset filtering state after a delay to show the loading state
-    setTimeout(() => setIsFiltering(false), 1000);
+    setTimeout(() => setIsFiltering(false), 500);
   };
 
   const handleClearFilters = () => {
@@ -142,7 +153,10 @@ export function ItemFilter({ onFilter }: ItemFilterProps) {
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(newDate) => {
+                      console.log("Date selected:", newDate);
+                      setDate(newDate);
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
