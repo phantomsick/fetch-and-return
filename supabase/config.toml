@@ -78,3 +78,9 @@ port = 54328
 
 [functions.create-avatars-bucket]
 verify_jwt = true
+
+[functions.schedule-deletion-notification]
+verify_jwt = true
+
+[functions.cleanup-resolved-items]
+verify_jwt = true

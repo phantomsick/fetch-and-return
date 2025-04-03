@@ -1,8 +1,18 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.29.0'
+import { createClient } from '@supabase/supabase-js'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 // This function ensures that the avatars bucket exists and is properly configured
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+  
   try {
     // Create a Supabase client with the Admin key
     const supabaseAdmin = createClient(
@@ -23,7 +33,7 @@ Deno.serve(async (req) => {
       console.error('Error checking buckets:', bucketsError)
       return new Response(
         JSON.stringify({ error: 'Failed to list buckets' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 500 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
     
@@ -40,7 +50,7 @@ Deno.serve(async (req) => {
         console.error('Error creating avatars bucket:', createError)
         return new Response(
           JSON.stringify({ error: 'Failed to create avatars bucket' }),
-          { headers: { 'Content-Type': 'application/json' }, status: 500 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         )
       }
       
@@ -53,25 +63,25 @@ Deno.serve(async (req) => {
         console.error('Error making avatars bucket public:', updateError)
         return new Response(
           JSON.stringify({ error: 'Failed to make avatars bucket public' }),
-          { headers: { 'Content-Type': 'application/json' }, status: 500 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         )
       }
       
       return new Response(
         JSON.stringify({ success: true, message: 'Avatars bucket created and made public' }),
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
       return new Response(
         JSON.stringify({ success: true, message: 'Avatars bucket already exists' }),
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
   } catch (error) {
     console.error('Error handling request:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { headers: { 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
 })

@@ -1,10 +1,3 @@
 
-project_id = "bqkxblcqdwyoquafdkgu"
-app_id = "schedule-deletion-notification"
-base_path = "/schedule-deletion-notification"
-override_migration = false
-
-[function.options]
-memory_size = 128
-timeout_ms = 5000
-env = ["SCHEDULE_DELETION_NOTIFICATION_SECRET"]
+# Edge function configuration
+import_map = "./import_map.json"

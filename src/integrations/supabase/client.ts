@@ -23,42 +23,21 @@ export const initializeStorage = async () => {
   try {
     console.log('Initializing storage...');
     
-    // Check if avatars bucket already exists
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    // Call the edge function to ensure avatars bucket exists
+    const { data, error } = await supabase.functions.invoke('create-avatars-bucket', {
+      method: 'POST',
+      body: {}
+    });
     
-    if (bucketsError) {
-      console.error('Error checking buckets:', bucketsError);
-      return;
+    if (error) {
+      console.error('Error calling create-avatars-bucket function:', error);
+      return false;
     }
     
-    const avatarsBucketExists = buckets.some(bucket => bucket.name === 'avatars');
-    
-    if (!avatarsBucketExists) {
-      console.log('Creating avatars bucket...');
-      const { error: createError } = await supabase.storage.createBucket('avatars', {
-        public: true,
-        fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
-      });
-      
-      if (createError) {
-        console.error('Error creating avatars bucket:', createError);
-        return;
-      }
-      
-      // Set bucket public
-      const { error: updateError } = await supabase.storage.updateBucket('avatars', {
-        public: true
-      });
-      
-      if (updateError) {
-        console.error('Error making avatars bucket public:', updateError);
-      } else {
-        console.log('Avatars bucket created and made public');
-      }
-    } else {
-      console.log('Avatars bucket already exists');
-    }
+    console.log('Storage initialization result:', data);
+    return true;
   } catch (error) {
     console.error('Error initializing storage:', error);
+    return false;
   }
 };

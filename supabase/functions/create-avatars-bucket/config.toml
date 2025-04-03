@@ -2,7 +2,3 @@
 # Set the function import map
 [function.import_map]
 src = "./import_map.json"
-
-# Set the function port
-[function.port]
-port = 9000
