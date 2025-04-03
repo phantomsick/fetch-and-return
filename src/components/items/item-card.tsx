@@ -20,6 +20,7 @@ export function ItemCard({ item }: ItemCardProps) {
   });
   
   const truncateText = (text: string, maxLength: number) => {
+    if (!text) return "";
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
   };
@@ -73,7 +74,7 @@ export function ItemCard({ item }: ItemCardProps) {
           <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
           
           <p className="text-sm text-muted-foreground mb-4">
-            {truncateText(item.description, 120)}
+            {truncateText(item.description || "", 120)}
           </p>
           
           <div className="flex items-center text-sm text-muted-foreground mb-2">
@@ -101,7 +102,7 @@ export function ItemCard({ item }: ItemCardProps) {
           <Button 
             variant="secondary" 
             size="sm"
-            onClick={() => navigate(`/item/${item.id}`)}
+            onClick={() => navigate(`/items/${item.id}`)}
           >
             <MessageSquare className="mr-2 h-4 w-4" />
             View Details

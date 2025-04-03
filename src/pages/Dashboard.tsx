@@ -2,15 +2,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth/auth-context";
-import { supabase, initializeStorage } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, User, Mail, Camera, LogOut, ArrowLeft } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Loader2, User, Mail, LogOut, ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,18 +38,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [name, setName] = useState(profile?.name || "");
-  const [profilePicture, setProfilePicture] = useState<string | null>(profile?.profile_picture || null);
   
   useEffect(() => {
     if (profile) {
       setName(profile.name || "");
-      setProfilePicture(profile.profile_picture);
     }
-    
-    // Initialize storage buckets
-    initializeStorage();
   }, [profile]);
 
   const handleUpdateProfile = async () => {
@@ -80,85 +73,6 @@ const Dashboard = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-  
-  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    
-    setIsUploading(true);
-    
-    try {
-      // Ensure bucket exists
-      await initializeStorage();
-      
-      // Upload file
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      
-      // Remove old avatar if exists
-      if (profile?.profile_picture) {
-        const oldFileName = profile.profile_picture.split('/').pop();
-        if (oldFileName) {
-          try {
-            await supabase
-              .storage
-              .from('avatars')
-              .remove([oldFileName]);
-          } catch (error) {
-            console.error("Failed to remove old avatar:", error);
-            // Continue with upload even if removal fails
-          }
-        }
-      }
-      
-      // Upload new file
-      const { error: uploadError, data: uploadData } = await supabase
-        .storage
-        .from('avatars')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-        
-      if (uploadError) throw uploadError;
-      
-      console.log("File uploaded successfully:", uploadData);
-      
-      // Get public URL
-      const { data: urlData } = supabase
-        .storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-        
-      const publicUrl = urlData.publicUrl;
-      console.log("Public URL:", publicUrl);
-      
-      // Update profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ profile_picture: publicUrl })
-        .eq('id', user.id);
-        
-      if (updateError) throw updateError;
-      
-      setProfilePicture(publicUrl);
-      
-      toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been updated successfully."
-      });
-      
-    } catch (error: any) {
-      console.error("Error updating profile picture:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile picture. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUploading(false);
     }
   };
   
@@ -212,15 +126,6 @@ const Dashboard = () => {
     }
   };
   
-  const getInitials = (name?: string | null) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-  
   if (!user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -258,47 +163,6 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage src={profilePicture || ""} alt={name} />
-                    <AvatarFallback className="text-lg">{getInitials(name)}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 space-y-2">
-                    <h3 className="font-medium">Profile Picture</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This will be displayed on your profile and in comments.
-                    </p>
-                    
-                    <div className="flex items-center">
-                      <Input
-                        type="file"
-                        id="avatar"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleProfilePictureChange}
-                      />
-                      <Label htmlFor="avatar" className="cursor-pointer">
-                        <Button type="button" variant="outline" size="sm" asChild>
-                          <span>
-                            {isUploading ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Camera className="mr-2 h-4 w-4" />
-                                Change Avatar
-                              </>
-                            )}
-                          </span>
-                        </Button>
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="name">
                     <User className="inline-block mr-2 h-4 w-4" />

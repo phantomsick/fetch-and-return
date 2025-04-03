@@ -21,11 +21,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Initialize avatars bucket
 export const initializeStorage = async () => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.log('No session found, skipping storage initialization');
-      return;
-    }
+    console.log('Initializing storage...');
     
     // Check if avatars bucket already exists
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();

@@ -1,11 +1,11 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/items/item-card";
 import { Item, supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth/auth-context";
 
 const MyItems = () => {
@@ -104,7 +104,16 @@ const MyItems = () => {
   if (items.length === 0) {
     return (
       <div className="container py-8">
-        <h1 className="text-3xl font-bold mb-8">My Items</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">My Items</h1>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </div>
         <div className="text-center py-16 border rounded-lg bg-muted/30">
           <h3 className="text-2xl font-medium mb-2">You haven't reported any items yet</h3>
           <p className="text-muted-foreground mb-6">
@@ -122,9 +131,18 @@ const MyItems = () => {
     <div className="container py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My Items</h1>
-        <Button onClick={() => navigate("/create")}>
-          Report New Item
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+          <Button onClick={() => navigate("/create")}>
+            Report New Item
+          </Button>
+        </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

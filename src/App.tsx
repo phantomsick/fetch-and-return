@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth/auth-context";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { useEffect } from "react";
+import { initializeStorage } from "@/integrations/supabase/client";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -23,6 +25,11 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize storage buckets on app load
+  useEffect(() => {
+    initializeStorage();
+  }, []);
+
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
