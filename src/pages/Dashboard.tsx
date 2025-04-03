@@ -90,6 +90,9 @@ const Dashboard = () => {
     setIsUploading(true);
     
     try {
+      // Ensure bucket exists
+      await initializeStorage();
+      
       // Upload file
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -111,7 +114,7 @@ const Dashboard = () => {
       }
       
       // Upload new file
-      const { error: uploadError } = await supabase
+      const { error: uploadError, data: uploadData } = await supabase
         .storage
         .from('avatars')
         .upload(fileName, file, {
@@ -121,6 +124,8 @@ const Dashboard = () => {
         
       if (uploadError) throw uploadError;
       
+      console.log("File uploaded successfully:", uploadData);
+      
       // Get public URL
       const { data: urlData } = supabase
         .storage
@@ -128,6 +133,7 @@ const Dashboard = () => {
         .getPublicUrl(fileName);
         
       const publicUrl = urlData.publicUrl;
+      console.log("Public URL:", publicUrl);
       
       // Update profile
       const { error: updateError } = await supabase

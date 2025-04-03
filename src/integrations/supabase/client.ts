@@ -21,14 +21,47 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Initialize avatars bucket
 export const initializeStorage = async () => {
   try {
-    const session = await supabase.auth.getSession();
-    if (!session.data.session) {
-      // Only authenticated users can call this function
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log('No session found, skipping storage initialization');
       return;
     }
     
-    await supabase.functions.invoke('create-avatars-bucket');
-    console.log('Storage initialized successfully');
+    // Check if avatars bucket already exists
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error('Error checking buckets:', bucketsError);
+      return;
+    }
+    
+    const avatarsBucketExists = buckets.some(bucket => bucket.name === 'avatars');
+    
+    if (!avatarsBucketExists) {
+      console.log('Creating avatars bucket...');
+      const { error: createError } = await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
+      });
+      
+      if (createError) {
+        console.error('Error creating avatars bucket:', createError);
+        return;
+      }
+      
+      // Set bucket public
+      const { error: updateError } = await supabase.storage.updateBucket('avatars', {
+        public: true
+      });
+      
+      if (updateError) {
+        console.error('Error making avatars bucket public:', updateError);
+      } else {
+        console.log('Avatars bucket created and made public');
+      }
+    } else {
+      console.log('Avatars bucket already exists');
+    }
   } catch (error) {
     console.error('Error initializing storage:', error);
   }

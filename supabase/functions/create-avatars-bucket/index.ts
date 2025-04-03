@@ -1,75 +1,89 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Create a Supabase client with the admin key
-    const supabaseAdmin = createClient(
+    // Get the authorization header from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create a Supabase client with the auth header
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
       }
-    )
+    );
 
-    // Check if the avatars bucket already exists
-    const { data: existingBuckets, error: bucketError } = await supabaseAdmin
-      .storage
-      .listBuckets()
-
-    if (bucketError) {
-      throw bucketError
+    // Check if the avatars bucket exists
+    const { data: buckets, error: listError } = await supabaseClient.storage.listBuckets();
+    
+    if (listError) {
+      throw listError;
     }
 
-    const avatarsBucketExists = existingBuckets.some(bucket => bucket.name === 'avatars')
-
+    const avatarsBucketExists = buckets.some(bucket => bucket.name === 'avatars');
+    
+    // Create the bucket if it doesn't exist
     if (!avatarsBucketExists) {
-      // Create the avatars bucket
-      const { error: createError } = await supabaseAdmin
-        .storage
-        .createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 1024 * 1024, // 1MB
-          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-        })
-
+      console.log('Creating avatars bucket...');
+      const { error: createError } = await supabaseClient.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
+      });
+      
       if (createError) {
-        throw createError
+        throw createError;
       }
 
-      // Set up public access for the bucket
-      const { error: policyError } = await supabaseAdmin
-        .storage
-        .from('avatars')
-        .createSignedUrl('dummy.txt', 1) // This is just to initialize the bucket
-
-      if (policyError && !policyError.message.includes('The resource was not found')) {
-        throw policyError
+      // Set bucket to public
+      const { error: updateError } = await supabaseClient.storage.updateBucket('avatars', {
+        public: true
+      });
+      
+      if (updateError) {
+        throw updateError;
       }
+
+      return new Response(
+        JSON.stringify({ message: 'Avatars bucket created successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Avatars bucket is ready" }),
+      JSON.stringify({ message: 'Avatars bucket already exists' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    );
   } catch (error) {
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
-})
+});
