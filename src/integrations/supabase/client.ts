@@ -13,7 +13,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storage: localStorage,
+    storage: typeof window !== 'undefined' ? localStorage : undefined,
     storageKey: 'lost-and-found-auth-state'
   }
 });
@@ -21,7 +21,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Initialize avatars bucket
 export const initializeStorage = async () => {
   try {
-    if (!supabase.auth.getSession()) {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
       // Only authenticated users can call this function
       return;
     }
