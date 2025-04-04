@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 const AdminDashboard = () => {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useDarkMode();
+  const { darkMode, setDarkMode } = useDarkMode();
   const [activeTab, setActiveTab] = useState("items");
 
   useEffect(() => {

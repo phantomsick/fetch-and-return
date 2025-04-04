@@ -49,7 +49,7 @@ export function ReportItem({ itemId }: ReportItemProps) {
     try {
       setLoading(true);
       
-      // Use raw SQL insert via RPC to work around type checking issues
+      // Use rpc to create the report
       const { error } = await supabase.rpc('create_report', {
         p_item_id: itemId,
         p_reporter_id: user.id,

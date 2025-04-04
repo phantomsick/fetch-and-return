@@ -41,7 +41,6 @@ file_size_limit = 52428800
 
 [auth]
 enabled = true
-port = 54326
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
@@ -66,12 +65,6 @@ redirect_uri = ""
 
 [analytics]
 enabled = false
-port = 54327
-vector_port = 54328
-backend = "postgres"
-
-[experimental]
-traces_enabled = false
 
 [functions]
 [functions.admin-functions]

@@ -21,8 +21,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Create necessary database functions
-    const { error } = await supabase.rpc('create_admin_functions');
+    // Create necessary database functions for admin operations
+    const { error } = await supabase.rpc('create_admin_functions', {}, {
+      headers: { 'Content-Type': 'application/json' }
+    });
 
     if (error) {
       console.error('Error creating admin functions:', error);

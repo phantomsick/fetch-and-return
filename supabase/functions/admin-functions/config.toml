@@ -1,0 +1,7 @@
+
+[build]
+cmd = "deno task build"
+
+[functions]
+[functions.admin-functions]
+verify_jwt = false
