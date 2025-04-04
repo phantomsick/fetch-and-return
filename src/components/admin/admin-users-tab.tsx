@@ -66,10 +66,11 @@ export function AdminUsersTab() {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ banned: !currentBanStatus })
-        .eq('id', userId);
+      // Used named parameters instead
+      const { error } = await supabase.rpc('toggle_user_ban_status', {
+        p_user_id: userId,
+        p_banned: !currentBanStatus
+      });
       
       if (error) throw error;
       
@@ -99,10 +100,11 @@ export function AdminUsersTab() {
       
       const newRole = currentRole === 'admin' ? 'user' : 'admin';
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
+      // Used named parameters instead
+      const { error } = await supabase.rpc('update_user_role', {
+        p_user_id: userId,
+        p_role: newRole
+      });
       
       if (error) throw error;
       
@@ -172,7 +174,7 @@ export function AdminUsersTab() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.banned ? "destructive" : "success"}>
+                      <Badge variant={user.banned ? "destructive" : "default"}>
                         {user.banned ? 'Banned' : 'Active'}
                       </Badge>
                     </TableCell>

@@ -23,7 +23,6 @@ import { Loader2, Trash2, Edit, CheckCircle, AlertCircle } from "lucide-react";
 import { Item } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card } from "@/components/ui/card";
 
 export function AdminItemsTab() {
   const [items, setItems] = useState<Item[]>([]);
@@ -41,23 +40,12 @@ export function AdminItemsTab() {
     try {
       setLoading(true);
       
-      let query = supabase
-        .from('items')
-        .select('*, user:profiles(name, email)');
-      
-      if (categoryFilter) {
-        query = query.eq('category', categoryFilter);
-      }
-      
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
-      }
-      
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
-      }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Use a stored procedure to get items
+      const { data, error } = await supabase.rpc('get_items_with_user_details', {
+        p_category: categoryFilter || null,
+        p_status: statusFilter || null,
+        p_search: searchQuery || null
+      });
       
       if (error) throw error;
       

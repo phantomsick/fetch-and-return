@@ -49,13 +49,12 @@ export function ReportItem({ itemId }: ReportItemProps) {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('reports')
-        .insert({
-          item_id: itemId,
-          reporter_id: user.id,
-          reason: reason.trim(),
-        });
+      // Use raw SQL insert via RPC to work around type checking issues
+      const { error } = await supabase.rpc('create_report', {
+        p_item_id: itemId,
+        p_reporter_id: user.id,
+        p_reason: reason.trim()
+      });
       
       if (error) throw error;
       

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export { supabase };
@@ -33,6 +34,20 @@ export type Comment = {
   message: string;
   created_at: string;
   user?: Profile | null;
+};
+
+export type Report = {
+  id: string;
+  item_id: string;
+  reporter_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  item?: {
+    title: string;
+    category: string;
+  } | null;
+  reporter?: Profile | null;
 };
 
 // Function to get appropriate resolution message based on category

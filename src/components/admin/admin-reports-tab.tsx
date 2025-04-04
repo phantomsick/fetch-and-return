@@ -14,23 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { Loader2, ExternalLink, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-
-type Report = {
-  id: string;
-  item_id: string;
-  reporter_id: string;
-  reason: string;
-  status: string;
-  created_at: string;
-  item: {
-    title: string;
-    category: string;
-  };
-  reporter: {
-    name: string;
-    email: string;
-  };
-};
+import { Report } from "@/lib/supabase";
 
 export function AdminReportsTab() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -46,14 +30,8 @@ export function AdminReportsTab() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('reports')
-        .select(`
-          *,
-          item:items(title, category),
-          reporter:profiles(name, email)
-        `)
-        .order('created_at', { ascending: false });
+      // Use PostgreSQL function to fetch reports with joined data
+      const { data, error } = await supabase.rpc('get_reports_with_details');
       
       if (error) throw error;
       
@@ -74,10 +52,11 @@ export function AdminReportsTab() {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('reports')
-        .update({ status: newStatus })
-        .eq('id', reportId);
+      // Use PostgreSQL function to update report status
+      const { error } = await supabase.rpc('update_report_status', {
+        p_report_id: reportId,
+        p_status: newStatus
+      });
       
       if (error) throw error;
       
@@ -105,21 +84,13 @@ export function AdminReportsTab() {
     try {
       setLoading(true);
       
-      // First update report status
-      const { error: reportError } = await supabase
-        .from('reports')
-        .update({ status: 'reviewed' })
-        .eq('id', reportId);
+      // Use PostgreSQL function to handle report and delete item
+      const { error } = await supabase.rpc('handle_report_and_delete_item', {
+        p_report_id: reportId,
+        p_item_id: itemId
+      });
       
-      if (reportError) throw reportError;
-      
-      // Then delete the item
-      const { error: itemError } = await supabase
-        .from('items')
-        .delete()
-        .eq('id', itemId);
-      
-      if (itemError) throw itemError;
+      if (error) throw error;
       
       // Update the reports list
       setReports(reports.map(report => 
