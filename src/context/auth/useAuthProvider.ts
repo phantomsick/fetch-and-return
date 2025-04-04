@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -11,6 +10,7 @@ export const useAuthProvider = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,6 +32,14 @@ export const useAuthProvider = () => {
               const userProfile = await fetchProfile(session.user.id);
               if (userProfile) {
                 setProfile(userProfile);
+                setIsAdmin(userProfile.role === 'admin');
+                
+                // If user is banned, sign them out
+                if (userProfile.banned) {
+                  toasts.showLoginError("Your account has been banned.");
+                  signOut();
+                  return;
+                }
               }
             }, 0);
             
@@ -40,6 +48,7 @@ export const useAuthProvider = () => {
             }
           } else {
             setProfile(null);
+            setIsAdmin(false);
             if (event === 'SIGNED_OUT') {
               navigate('/auth');
             }
@@ -55,6 +64,14 @@ export const useAuthProvider = () => {
           const userProfile = await fetchProfile(data.session.user.id);
           if (userProfile) {
             setProfile(userProfile);
+            setIsAdmin(userProfile.role === 'admin');
+            
+            // If user is banned, sign them out
+            if (userProfile.banned) {
+              toasts.showLoginError("Your account has been banned.");
+              signOut();
+              return;
+            }
           }
         }
         
@@ -199,7 +216,8 @@ export const useAuthProvider = () => {
   return { 
     session, 
     user, 
-    profile, 
+    profile,
+    isAdmin,
     signIn, 
     signUp, 
     signOut,

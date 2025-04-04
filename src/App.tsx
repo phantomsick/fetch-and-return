@@ -9,6 +9,7 @@ import { initializeStorage } from "@/integrations/supabase/client";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
 import MyItems from "@/pages/MyItems";
 import CreateItem from "@/pages/CreateItem";
 import ItemDetail from "@/pages/ItemDetail";
@@ -48,6 +49,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/my-items" element={<MyItems />} />
               <Route path="/create" element={<CreateItem />} />
               <Route path="/items/:id" element={<ItemDetail />} />

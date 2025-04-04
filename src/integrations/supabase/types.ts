@@ -100,24 +100,65 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banned: boolean
           email: string | null
           id: string
           name: string | null
           profile_picture: string | null
+          role: string
         }
         Insert: {
+          banned?: boolean
           email?: string | null
           id: string
           name?: string | null
           profile_picture?: string | null
+          role?: string
         }
         Update: {
+          banned?: boolean
           email?: string | null
           id?: string
           name?: string | null
           profile_picture?: string | null
+          role?: string
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          reason: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
