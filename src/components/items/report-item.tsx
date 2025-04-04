@@ -49,7 +49,7 @@ export function ReportItem({ itemId }: ReportItemProps) {
     try {
       setLoading(true);
       
-      // Use rpc to create the report
+      // Use rpc to create the report with named parameters
       const { error } = await supabase.rpc('create_report', {
         p_item_id: itemId,
         p_reporter_id: user.id,

@@ -8,7 +8,8 @@ import { AdminItemsTab } from "@/components/admin/admin-items-tab";
 import { AdminUsersTab } from "@/components/admin/admin-users-tab";
 import { AdminReportsTab } from "@/components/admin/admin-reports-tab";
 import { useDarkMode } from "@/hooks/useDarkMode";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AdminDashboard = () => {
   const { user, isAdmin, loading } = useAuth();
@@ -35,7 +36,19 @@ const AdminDashboard = () => {
   }
 
   if (!isAdmin) {
-    return null; // Will redirect in the useEffect
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header darkMode={darkMode} setDarkMode={setDarkMode} />
+        <div className="flex flex-col items-center justify-center flex-1 p-4">
+          <ShieldAlert className="h-16 w-16 text-yellow-500 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Admin Access Required</h1>
+          <p className="text-muted-foreground mb-4 text-center">
+            You don't have permission to access the admin dashboard.
+          </p>
+          <Button onClick={() => navigate("/")}>Return to Home</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

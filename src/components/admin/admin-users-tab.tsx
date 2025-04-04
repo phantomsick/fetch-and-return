@@ -66,7 +66,7 @@ export function AdminUsersTab() {
     try {
       setLoading(true);
       
-      // Used named parameters instead
+      // Use named parameters for RPC call
       const { error } = await supabase.rpc('toggle_user_ban_status', {
         p_user_id: userId,
         p_banned: !currentBanStatus
@@ -100,7 +100,7 @@ export function AdminUsersTab() {
       
       const newRole = currentRole === 'admin' ? 'user' : 'admin';
       
-      // Used named parameters instead
+      // Use named parameters for RPC call
       const { error } = await supabase.rpc('update_user_role', {
         p_user_id: userId,
         p_role: newRole

@@ -1,0 +1,3 @@
+
+# Edge function configuration
+import_map = "./import_map.json"

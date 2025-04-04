@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -40,7 +39,6 @@ export function AdminItemsTab() {
     try {
       setLoading(true);
       
-      // Use a stored procedure to get items
       const { data, error } = await supabase.rpc('get_items_with_user_details', {
         p_category: categoryFilter || null,
         p_status: statusFilter || null,
