@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth/auth-context";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useEffect } from "react";
-import { initializeStorage } from "@/integrations/supabase/client";
+import { initializeStorage, supabase } from "@/integrations/supabase/client";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -26,14 +26,26 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Initialize storage buckets on app load
+  // Initialize storage buckets and admin functions on app load
   useEffect(() => {
     const initialize = async () => {
       try {
         await initializeStorage();
         console.log("Storage initialization completed");
+        
+        // Initialize admin functions
+        const { error } = await supabase.functions.invoke('admin-functions', {
+          method: 'POST',
+          body: {}
+        });
+        
+        if (error) {
+          console.error("Error initializing admin functions:", error);
+        } else {
+          console.log("Admin functions initialized successfully");
+        }
       } catch (error) {
-        console.error("Error during storage initialization:", error);
+        console.error("Error during initialization:", error);
       }
     };
     
