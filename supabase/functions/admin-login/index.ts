@@ -14,83 +14,86 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password } = await req.json();
-    
-    // Validate admin credentials
-    if (email !== 'admin@gmail.com') {
-      return new Response(
-        JSON.stringify({ 
-          error: "Only the admin account can access this feature." 
-        }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-
     // Create a Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Attempt to sign in with the provided credentials
-    const { data, error } = await supabase.auth.signInWithPassword({ 
-      email, 
-      password 
-    });
+    // Extract the email and password from the request
+    const { email, password } = await req.json();
 
-    if (error) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
+    // Check if the credentials are for the admin
+    if (email === "admin@gmail.com") {
+      // Sign in the user
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    // Ensure the user is an admin
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileError || !profileData || profileData.role !== 'admin') {
-      // Sign out the user if they're not an admin
-      await supabase.auth.signOut();
-      
-      return new Response(
-        JSON.stringify({ 
-          error: "Only admin users can access this feature." 
-        }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        message: "Admin login successful", 
-        user: data.user,
-        session: data.session
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      if (authError) {
+        return new Response(
+          JSON.stringify({ success: false, error: authError.message }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    );
+
+      // Check if the user has the admin role in the profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to retrieve user profile" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Set the user's role to admin if they're the admin user
+      if (profileData.role !== "admin") {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ role: "admin" })
+          .eq("id", authData.user.id);
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Failed to update user role" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, session: authData.session, isAdmin: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      // For non-admin users, just return regular authentication response
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        return new Response(
+          JSON.stringify({ success: false, error: authError.message }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, session: authData.session, isAdmin: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
-    console.error("Error in admin-login function:", error);
+    console.error("Admin login error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
+      JSON.stringify({ success: false, error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

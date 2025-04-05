@@ -33,7 +33,7 @@ const ItemDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -334,7 +334,8 @@ const ItemDetail = () => {
             </div>
           </div>
           
-          {item.status === 'Open' && user?.id === item.user_id && (
+          {/* Show resolve button if user is item owner or admin */}
+          {(item.status === 'Open' && (user?.id === item.user_id || isAdmin)) && (
             <div className="space-y-4">
               <Button 
                 onClick={handleResolveClick}
@@ -375,6 +376,28 @@ const ItemDetail = () => {
             </div>
           )}
           
+          {/* Admin can always delete items regardless of status */}
+          {(item.status !== 'Open' && isAdmin) && (
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              className="w-full mt-4"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Item (Admin)
+                </>
+              )}
+            </Button>
+          )}
+          
           {item.status === 'Resolved' && (
             <div className="mt-4 p-4 rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
               <CheckCircle2 className="mr-2 h-4 w-4 inline-block align-middle" />
@@ -382,7 +405,8 @@ const ItemDetail = () => {
             </div>
           )}
           
-          {item.status === 'Resolved' && user?.id === item.user_id && (
+          {/* Show reopen button if user is item owner or admin */}
+          {(item.status === 'Resolved' && (user?.id === item.user_id || isAdmin)) && (
             <div className="space-y-4 mt-4">
               {canReopen && (
                 <Button 
