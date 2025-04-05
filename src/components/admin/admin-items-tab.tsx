@@ -57,9 +57,17 @@ export function AdminItemsTab() {
       // Properly format and cast the data to match Item type
       const formattedItems: Item[] = data.map(item => ({
         ...item,
-        status: item.status as "Open" | "Resolved", // Cast status to the correct union type
-        category: item.category as "Lost" | "Found", // Cast category to the correct union type
-        user: item.profiles // Map the profiles data to user
+        status: item.status as "Open" | "Resolved",
+        category: item.category as "Lost" | "Found",
+        // Safely handle the user object by checking if profiles exists
+        user: item.profiles ? {
+          id: item.profiles.id,
+          name: item.profiles.name,
+          email: item.profiles.email,
+          profile_picture: item.profiles.profile_picture,
+          role: item.profiles.role,
+          banned: item.profiles.banned
+        } : null
       }));
 
       setItems(formattedItems);

@@ -44,6 +44,7 @@ export type Report = {
   status: string;
   created_at: string;
   item?: {
+    id: string;
     title: string;
     category: string;
   } | null;

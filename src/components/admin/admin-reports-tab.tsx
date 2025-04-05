@@ -63,9 +63,18 @@ export function AdminReportsTab() {
         ...report,
         item: report.items ? {
           title: report.items.title,
-          category: report.items.category
+          category: report.items.category,
+          id: report.items.id
         } : null,
-        reporter: report.profiles as Profile | null
+        // Safely handle the reporter object
+        reporter: report.profiles ? {
+          id: report.profiles.id,
+          name: report.profiles.name,
+          email: report.profiles.email,
+          profile_picture: report.profiles.profile_picture,
+          role: report.profiles.role,
+          banned: report.profiles.banned
+        } : null
       }));
 
       setReports(formattedReports);
