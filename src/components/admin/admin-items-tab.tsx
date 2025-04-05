@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -39,15 +40,27 @@ export function AdminItemsTab() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase.rpc('get_items_with_user_details', {
-        p_category: categoryFilter || null,
-        p_status: statusFilter || null,
-        p_search: searchQuery || null
-      });
+      // Use PostgreSQL function to get items with user details
+      const { data, error } = await supabase.from('items')
+        .select(`
+          id, title, description, category, location, image_url, date,
+          user_id, status, contact_info, created_at,
+          profiles:user_id (id, name, email, role, banned)
+        `)
+        .eq(categoryFilter ? 'category' : 'id != ', categoryFilter || 'id')
+        .eq(statusFilter ? 'status' : 'id != ', statusFilter || 'id')
+        .ilike(searchQuery ? 'title' : 'id', searchQuery ? `%${searchQuery}%` : '%')
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
+
+      // Format data to match the Item type with user property
+      const formattedItems = data.map(item => ({
+        ...item,
+        user: item.profiles
+      }));
       
-      setItems(data as Item[]);
+      setItems(formattedItems);
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({

@@ -16,14 +16,14 @@ Deno.serve(async (req) => {
   try {
     // Create a Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     console.log("Initializing admin functions");
 
-    // Create RPC function for getting items with user details
+    // Create or update get_items_with_user_details function
     const { error: itemsRpcError } = await supabase.rpc(
-      'create_or_replace_function',
+      'create_or_replace_function_for_admin',
       {
         function_name: 'get_items_with_user_details',
         function_args: 'p_category text, p_status text, p_search text',
@@ -77,11 +77,13 @@ Deno.serve(async (req) => {
     
     if (itemsRpcError) {
       console.error("Error creating get_items_with_user_details function:", itemsRpcError);
+    } else {
+      console.log("Successfully created get_items_with_user_details function");
     }
 
-    // Create RPC function for getting reports with details
+    // Create or update get_reports_with_details function
     const { error: reportsRpcError } = await supabase.rpc(
-      'create_or_replace_function',
+      'create_or_replace_function_for_admin',
       {
         function_name: 'get_reports_with_details',
         function_definition: `
@@ -126,11 +128,13 @@ Deno.serve(async (req) => {
     
     if (reportsRpcError) {
       console.error("Error creating get_reports_with_details function:", reportsRpcError);
+    } else {
+      console.log("Successfully created get_reports_with_details function");
     }
     
-    // Create function to handle report and delete item
+    // Create or update handle_report_and_delete_item function
     const { error: handleReportError } = await supabase.rpc(
-      'create_or_replace_function',
+      'create_or_replace_function_for_admin',
       {
         function_name: 'handle_report_and_delete_item',
         function_args: 'p_report_id uuid, p_item_id uuid',
@@ -156,9 +160,57 @@ Deno.serve(async (req) => {
     
     if (handleReportError) {
       console.error("Error creating handle_report_and_delete_item function:", handleReportError);
+    } else {
+      console.log("Successfully created handle_report_and_delete_item function");
     }
+
+    // Create or update create_or_replace_function_for_admin helper function if it doesn't exist
+    const { error: createHelperFunctionError } = await supabase.from('_temp_code_execution').select().execute(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'public' AND p.proname = 'create_or_replace_function_for_admin'
+        ) THEN
+          -- Create the helper function to create or replace functions
+          CREATE OR REPLACE FUNCTION public.create_or_replace_function_for_admin(
+            function_name TEXT,
+            function_args TEXT DEFAULT '',
+            function_definition TEXT
+          )
+          RETURNS VOID
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $func$
+          DECLARE
+            full_definition TEXT;
+          BEGIN
+            IF function_args = '' THEN
+              full_definition := format('CREATE OR REPLACE FUNCTION public.%I %s', 
+                function_name, function_definition);
+            ELSE
+              full_definition := format('CREATE OR REPLACE FUNCTION public.%I(%s) %s', 
+                function_name, function_args, function_definition);
+            END IF;
+            
+            EXECUTE full_definition;
+          END;
+          $func$;
+        END IF;
+      END;
+      $$;
+    `);
     
-    // Create or replace function that creates admin functions
+    if (createHelperFunctionError) {
+      console.error("Error creating helper function:", createHelperFunctionError);
+      return new Response(
+        JSON.stringify({ error: "Failed to create helper function" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Call the existing create_admin_functions
     const { error: createAdminFunctionsError } = await supabase.rpc('create_admin_functions');
     
     if (createAdminFunctionsError) {

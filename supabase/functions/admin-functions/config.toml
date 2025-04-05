@@ -1,7 +1,8 @@
 
-[build]
-cmd = "deno task build"
+# Edge function configuration
+[function.import_map]
+src = "./import_map.json"
 
-[functions]
-[functions.admin-functions]
+[deploy]
+allowed_verbs = ["POST", "OPTIONS"]
 verify_jwt = false

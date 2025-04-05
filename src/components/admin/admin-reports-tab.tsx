@@ -30,12 +30,25 @@ export function AdminReportsTab() {
     try {
       setLoading(true);
       
-      // Use PostgreSQL function to fetch reports with joined data
-      const { data, error } = await supabase.rpc('get_reports_with_details');
+      // Fetch reports with joined data
+      const { data, error } = await supabase.from('reports')
+        .select(`
+          id, item_id, reporter_id, reason, status, created_at,
+          items:item_id (id, title, category),
+          profiles:reporter_id (id, name, email)
+        `)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      setReports(data as Report[]);
+      // Format data to match the Report type
+      const formattedReports = data.map(report => ({
+        ...report,
+        item: report.items,
+        reporter: report.profiles
+      }));
+      
+      setReports(formattedReports);
     } catch (error) {
       console.error('Error fetching reports:', error);
       toast({
@@ -84,13 +97,21 @@ export function AdminReportsTab() {
     try {
       setLoading(true);
       
-      // Use PostgreSQL function to handle report and delete item
-      const { error } = await supabase.rpc('handle_report_and_delete_item', {
+      // First mark the report as reviewed
+      const { error: updateError } = await supabase.rpc('update_report_status', {
         p_report_id: reportId,
-        p_item_id: itemId
+        p_status: 'reviewed'
       });
       
-      if (error) throw error;
+      if (updateError) throw updateError;
+      
+      // Then delete the item
+      const { error: deleteError } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (deleteError) throw deleteError;
       
       // Update the reports list
       setReports(reports.map(report => 
