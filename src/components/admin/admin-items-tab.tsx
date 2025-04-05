@@ -54,10 +54,12 @@ export function AdminItemsTab() {
         throw error;
       }
 
+      // Properly format and cast the data to match Item type
       const formattedItems: Item[] = data.map(item => ({
         ...item,
-        user: item.profiles,
-        category: item.category as "Lost" | "Found"
+        status: item.status as "Open" | "Resolved", // Cast status to the correct union type
+        category: item.category as "Lost" | "Found", // Cast category to the correct union type
+        user: item.profiles // Map the profiles data to user
       }));
 
       setItems(formattedItems);

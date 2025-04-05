@@ -34,15 +34,19 @@ function App() {
         console.log("Storage initialization completed");
         
         // Initialize admin functions
-        const { error } = await supabase.functions.invoke('admin-functions', {
-          method: 'POST',
-          body: {}
-        });
-        
-        if (error) {
-          console.error("Error initializing admin functions:", error);
-        } else {
-          console.log("Admin functions initialized successfully");
+        try {
+          const { error } = await supabase.functions.invoke('admin-functions', {
+            method: 'POST',
+            body: {}
+          });
+          
+          if (error) {
+            console.error("Error initializing admin functions:", error);
+          } else {
+            console.log("Admin functions initialized successfully");
+          }
+        } catch (fnError) {
+          console.error("Failed to call admin functions:", fnError);
         }
       } catch (error) {
         console.error("Error during initialization:", error);

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Report } from "@/lib/supabase";
+import { Report, Profile } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 
 export function AdminReportsTab() {
@@ -58,10 +58,14 @@ export function AdminReportsTab() {
         throw error;
       }
 
+      // Transform data to match Report type
       const formattedReports: Report[] = data.map(report => ({
         ...report,
-        item: report.items,
-        reporter: report.profiles
+        item: report.items ? {
+          title: report.items.title,
+          category: report.items.category
+        } : null,
+        reporter: report.profiles as Profile | null
       }));
 
       setReports(formattedReports);
