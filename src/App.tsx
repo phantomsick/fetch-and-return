@@ -5,11 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth/auth-context";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { initializeStorage } from "@/integrations/supabase/client";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
-import AdminDashboard from "@/pages/AdminDashboard";
 import MyItems from "@/pages/MyItems";
 import CreateItem from "@/pages/CreateItem";
 import ItemDetail from "@/pages/ItemDetail";
@@ -30,21 +29,10 @@ function App() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Initialize avatars bucket if needed
-        const { data: storageData, error: storageError } = await supabase
-          .from('profiles')
-          .select('count()')
-          .single();
-        
-        if (storageError) {
-          console.error("Error checking profiles:", storageError);
-        } else {
-          console.log("Profiles check successful");
-        }
-
+        await initializeStorage();
         console.log("Storage initialization completed");
       } catch (error) {
-        console.error("Error during initialization:", error);
+        console.error("Error during storage initialization:", error);
       }
     };
     
@@ -60,7 +48,6 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/my-items" element={<MyItems />} />
               <Route path="/create" element={<CreateItem />} />
               <Route path="/items/:id" element={<ItemDetail />} />

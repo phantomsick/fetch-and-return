@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, MapPin, User, Calendar, Phone, AlertTriangle, CheckCircle2, Trash2, RefreshCw } from "lucide-react";
 import { CommentsSection } from "@/components/items/comments-section";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 import { useAuth } from "@/context/auth/auth-context";
 import { 
@@ -33,7 +33,7 @@ const ItemDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -53,20 +53,9 @@ const ItemDetail = () => {
         setLoading(true);
         setError(null);
         
-        // Query the item with joined profile data
         const { data, error } = await supabase
           .from('items')
-          .select(`
-            *,
-            user:user_id (
-              id,
-              name, 
-              email,
-              profile_picture,
-              role,
-              banned
-            )
-          `)
+          .select('*')
           .eq('id', id)
           .single();
         
@@ -78,8 +67,20 @@ const ItemDetail = () => {
           setError("Item not found.");
           return;
         }
+        
+        // Fetch the user profile associated with this item
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user_id)
+          .single();
           
-        setItem(data as Item);
+        const itemWithProfile = {
+          ...data,
+          user: profileData || null
+        } as Item;
+        
+        setItem(itemWithProfile);
         
         // For resolved items, check when it was resolved
         if (data.status === 'Resolved') {
@@ -90,24 +91,30 @@ const ItemDetail = () => {
         // Fetch comments
         const { data: commentsData, error: commentsError } = await supabase
           .from('comments')
-          .select(`
-            *,
-            user:user_id (
-              id,
-              name,
-              email,
-              profile_picture,
-              role,
-              banned
-            )
-          `)
+          .select('*')
           .eq('item_id', id)
           .order('created_at', { ascending: false });
         
         if (commentsError) {
           console.error("Error fetching comments:", commentsError);
         } else if (commentsData) {
-          setComments(commentsData as Comment[]);
+          // Fetch profile data for each comment
+          const commentsWithProfiles = await Promise.all(
+            commentsData.map(async (comment) => {
+              const { data: userProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', comment.user_id)
+                .single();
+                
+              return {
+                ...comment,
+                user: userProfile || null
+              } as Comment;
+            })
+          );
+          
+          setComments(commentsWithProfiles);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load item.");
@@ -146,7 +153,7 @@ const ItemDetail = () => {
       
       setItem({ ...item, status: 'Resolved' });
       setResolvedDate(new Date().toISOString());
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error marking item as resolved:', error);
       toast({
         title: "Error",
@@ -180,7 +187,7 @@ const ItemDetail = () => {
       
       setItem({ ...item, status: 'Open' });
       setResolvedDate(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error reopening item:', error);
       toast({
         title: "Error",
@@ -212,16 +219,6 @@ const ItemDetail = () => {
         throw commentsError;
       }
       
-      // Delete any reports associated with this item
-      const { error: reportsError } = await supabase
-        .from('reports')
-        .delete()
-        .eq('item_id', item.id);
-      
-      if (reportsError) {
-        console.error('Error deleting reports:', reportsError);
-      }
-      
       // Then delete the item
       const { error: itemError } = await supabase
         .from('items')
@@ -240,7 +237,7 @@ const ItemDetail = () => {
       // Close the dialog and redirect to the home page
       setShowDeleteDialog(false);
       navigate('/');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting item:', error);
       toast({
         title: "Error",
@@ -337,8 +334,7 @@ const ItemDetail = () => {
             </div>
           </div>
           
-          {/* Show resolve button if user is item owner or admin */}
-          {(item.status === 'Open' && (user?.id === item.user_id || isAdmin)) && (
+          {item.status === 'Open' && user?.id === item.user_id && (
             <div className="space-y-4">
               <Button 
                 onClick={handleResolveClick}
@@ -379,28 +375,6 @@ const ItemDetail = () => {
             </div>
           )}
           
-          {/* Admin can always delete items regardless of status */}
-          {(item.status !== 'Open' && isAdmin) && (
-            <Button 
-              variant="destructive"
-              onClick={handleDeleteClick}
-              disabled={isDeleting}
-              className="w-full mt-4"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Item (Admin)
-                </>
-              )}
-            </Button>
-          )}
-          
           {item.status === 'Resolved' && (
             <div className="mt-4 p-4 rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
               <CheckCircle2 className="mr-2 h-4 w-4 inline-block align-middle" />
@@ -408,8 +382,7 @@ const ItemDetail = () => {
             </div>
           )}
           
-          {/* Show reopen button if user is item owner or admin */}
-          {(item.status === 'Resolved' && (user?.id === item.user_id || isAdmin)) && (
+          {item.status === 'Resolved' && user?.id === item.user_id && (
             <div className="space-y-4 mt-4">
               {canReopen && (
                 <Button 

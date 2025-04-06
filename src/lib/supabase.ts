@@ -8,8 +8,6 @@ export type Profile = {
   name: string | null;
   email: string | null;
   profile_picture: string | null;
-  role: string;
-  banned: boolean;
 };
 
 export type Item = {
@@ -34,21 +32,6 @@ export type Comment = {
   message: string;
   created_at: string;
   user?: Profile | null;
-};
-
-export type Report = {
-  id: string;
-  item_id: string;
-  reporter_id: string;
-  reason: string;
-  status: string;
-  created_at: string;
-  item?: {
-    id: string;
-    title: string;
-    category: string;
-  } | null;
-  reporter?: Profile | null;
 };
 
 // Function to get appropriate resolution message based on category

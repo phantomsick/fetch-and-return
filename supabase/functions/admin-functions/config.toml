@@ -1,8 +1,0 @@
-
-# Edge function configuration
-[function.import_map]
-src = "./import_map.json"
-
-[deploy]
-allowed_verbs = ["POST", "OPTIONS"]
-verify_jwt = false

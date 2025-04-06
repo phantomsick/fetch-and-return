@@ -100,152 +100,31 @@ export type Database = {
       }
       profiles: {
         Row: {
-          banned: boolean
           email: string | null
           id: string
           name: string | null
           profile_picture: string | null
-          role: string
         }
         Insert: {
-          banned?: boolean
           email?: string | null
           id: string
           name?: string | null
           profile_picture?: string | null
-          role?: string
         }
         Update: {
-          banned?: boolean
           email?: string | null
           id?: string
           name?: string | null
           profile_picture?: string | null
-          role?: string
         }
         Relationships: []
-      }
-      reports: {
-        Row: {
-          created_at: string
-          id: string
-          item_id: string
-          reason: string
-          reporter_id: string
-          status: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          item_id: string
-          reason: string
-          reporter_id: string
-          status?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          item_id?: string
-          reason?: string
-          reporter_id?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reports_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      create_admin_functions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      create_report: {
-        Args: {
-          p_item_id: string
-          p_reporter_id: string
-          p_reason: string
-        }
-        Returns: undefined
-      }
-      get_admin_items: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          category: string
-          contact_info: string
-          created_at: string
-          date: string
-          description: string | null
-          id: string
-          image_url: string | null
-          location: string
-          status: string
-          title: string
-          user_id: string
-        }[]
-      }
-      get_admin_reports: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          item_id: string
-          reporter_id: string
-          reason: string
-          status: string
-          created_at: string
-          item_title: string
-          item_category: string
-          reporter_name: string
-          reporter_email: string
-        }[]
-      }
-      get_admin_users: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          banned: boolean
-          email: string | null
-          id: string
-          name: string | null
-          profile_picture: string | null
-          role: string
-        }[]
-      }
-      is_admin: {
-        Args: {
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      toggle_user_ban_status: {
-        Args: {
-          p_user_id: string
-          p_banned: boolean
-        }
-        Returns: undefined
-      }
-      update_report_status: {
-        Args: {
-          p_report_id: string
-          p_status: string
-        }
-        Returns: undefined
-      }
-      update_user_role: {
-        Args: {
-          p_user_id: string
-          p_role: string
-        }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

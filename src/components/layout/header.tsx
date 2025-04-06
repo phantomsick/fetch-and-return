@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Moon, Sun, Menu, Search, PlusCircle, User, LogOut, Home, MapPin, Package, ShieldAlert } from "lucide-react";
+import { Moon, Sun, Menu, Search, PlusCircle, User, LogOut, Home, MapPin, Package } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -29,7 +29,7 @@ interface HeaderProps {
 
 export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
   const navigate = useNavigate();
-  const { user, signOut, profile, isAdmin } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -109,18 +109,6 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                     <PlusCircle className="mr-2 h-5 w-5" />
                     Report Item
                   </Button>
-                  
-                  {isAdmin && (
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start text-yellow-500"
-                      onClick={() => navigate("/admin")}
-                    >
-                      <ShieldAlert className="mr-2 h-5 w-5" />
-                      Admin Dashboard
-                    </Button>
-                  )}
-                  
                   <Button 
                     variant="ghost" 
                     className="justify-start text-destructive"
@@ -170,18 +158,6 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
               >
                 My Items
               </Button>
-              
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate("/admin")}
-                  className="text-yellow-500"
-                >
-                  <ShieldAlert className="mr-2 h-4 w-4" />
-                  Admin
-                </Button>
-              )}
-              
               <Button
                 variant="default"
                 onClick={() => navigate("/create")}
@@ -216,7 +192,6 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                   <div className="flex flex-col space-y-1 leading-none">
                     {profile?.name && <p className="font-medium">{profile.name}</p>}
                     {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
-                    {isAdmin && <p className="text-xs text-yellow-500 font-medium">Administrator</p>}
                   </div>
                 </div>
                 <DropdownMenuSeparator />
@@ -228,17 +203,6 @@ export function Header({ setDarkMode, darkMode, onSearch }: HeaderProps) {
                   <Package className="mr-2 h-4 w-4" />
                   <span>My Items</span>
                 </DropdownMenuItem>
-                
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/admin")} className="text-yellow-500">
-                      <ShieldAlert className="mr-2 h-4 w-4" />
-                      <span>Admin Dashboard</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => signOut()}
