@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ export function AdminItemsTab() {
         .from("items")
         .select(`
           *,
-          profiles:user_id (
+          user:user_id (
             id,
             name,
             email,
@@ -59,15 +58,8 @@ export function AdminItemsTab() {
         ...item,
         status: item.status as "Open" | "Resolved",
         category: item.category as "Lost" | "Found",
-        // Safely handle the user object by checking if profiles exists
-        user: item.profiles ? {
-          id: item.profiles.id,
-          name: item.profiles.name,
-          email: item.profiles.email,
-          profile_picture: item.profiles.profile_picture,
-          role: item.profiles.role,
-          banned: item.profiles.banned
-        } : null
+        // Keep the user object as is if it exists, otherwise set to null
+        user: item.user || null
       }));
 
       setItems(formattedItems);
@@ -89,6 +81,27 @@ export function AdminItemsTab() {
 
   const handleDeleteItem = async (id: string) => {
     try {
+      // First delete any comments associated with this item
+      const { error: commentsError } = await supabase
+        .from("comments")
+        .delete()
+        .eq("item_id", id);
+
+      if (commentsError) {
+        console.error("Error deleting comments:", commentsError);
+      }
+
+      // Then delete any reports associated with this item
+      const { error: reportsError } = await supabase
+        .from("reports")
+        .delete()
+        .eq("item_id", id);
+
+      if (reportsError) {
+        console.error("Error deleting reports:", reportsError);
+      }
+
+      // Now delete the item
       const { error } = await supabase.from("items").delete().eq("id", id);
 
       if (error) {

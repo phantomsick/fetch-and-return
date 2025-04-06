@@ -31,7 +31,8 @@ export function ItemCard({ item }: ItemCardProps) {
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (

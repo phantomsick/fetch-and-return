@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Comment, supabase } from "@/lib/supabase";
 import { formatDistanceToNow } from 'date-fns';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
 interface CommentsSectionProps {
@@ -16,7 +16,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSectionProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,24 +52,24 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
             message: newComment.trim(),
           }
         ])
-        .select()
+        .select(`
+          *,
+          user:user_id (
+            id,
+            name,
+            email,
+            profile_picture,
+            role,
+            banned
+          )
+        `)
         .single();
       
       if (error) {
         throw error;
       }
       
-      // Fetch the user profile for the new comment
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      const newCommentWithProfile = {
-        ...data,
-        user: profileData || null
-      } as Comment;
+      const newCommentWithProfile = data as Comment;
       
       setNewComment('');
       onCommentAdded(newCommentWithProfile);
@@ -78,7 +78,7 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
         title: "Comment added",
         description: "Your comment has been added successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding comment:', error);
       toast({
         title: "Error",
@@ -96,7 +96,8 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
@@ -132,7 +133,7 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
           onChange={(e) => setNewComment(e.target.value)}
           rows={3}
         />
-        <Button onClick={handleSubmitComment} disabled={isSubmitting}>
+        <Button onClick={handleSubmitComment} disabled={isSubmitting || !user}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -142,6 +143,11 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
             "Add Comment"
           )}
         </Button>
+        {!user && (
+          <div className="text-xs text-muted-foreground mt-1">
+            You need to sign in to add comments.
+          </div>
+        )}
       </div>
     </div>
   );

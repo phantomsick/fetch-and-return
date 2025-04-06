@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth/auth-context";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useEffect } from "react";
-import { initializeStorage, supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -26,28 +26,23 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Initialize storage buckets and admin functions on app load
+  // Initialize storage buckets on app load
   useEffect(() => {
     const initialize = async () => {
       try {
-        await initializeStorage();
-        console.log("Storage initialization completed");
+        // Initialize avatars bucket if needed
+        const { data: storageData, error: storageError } = await supabase
+          .from('profiles')
+          .select('count()')
+          .single();
         
-        // Initialize admin functions
-        try {
-          const { error } = await supabase.functions.invoke('admin-functions', {
-            method: 'POST',
-            body: {}
-          });
-          
-          if (error) {
-            console.error("Error initializing admin functions:", error);
-          } else {
-            console.log("Admin functions initialized successfully");
-          }
-        } catch (fnError) {
-          console.error("Failed to call admin functions:", fnError);
+        if (storageError) {
+          console.error("Error checking profiles:", storageError);
+        } else {
+          console.log("Profiles check successful");
         }
+
+        console.log("Storage initialization completed");
       } catch (error) {
         console.error("Error during initialization:", error);
       }

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Report, Profile } from "@/lib/supabase";
+import { Report } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 
 export function AdminReportsTab() {
@@ -38,12 +38,12 @@ export function AdminReportsTab() {
         .from("reports")
         .select(`
           *,
-          items:item_id (
+          item:item_id (
             id,
             title,
             category
           ),
-          profiles:reporter_id (
+          reporter:reporter_id (
             id,
             name,
             email,
@@ -61,20 +61,13 @@ export function AdminReportsTab() {
       // Transform data to match Report type
       const formattedReports: Report[] = data.map(report => ({
         ...report,
-        item: report.items ? {
-          title: report.items.title,
-          category: report.items.category,
-          id: report.items.id
+        item: report.item ? {
+          id: report.item.id,
+          title: report.item.title,
+          category: report.item.category
         } : null,
         // Safely handle the reporter object
-        reporter: report.profiles ? {
-          id: report.profiles.id,
-          name: report.profiles.name,
-          email: report.profiles.email,
-          profile_picture: report.profiles.profile_picture,
-          role: report.profiles.role,
-          banned: report.profiles.banned
-        } : null
+        reporter: report.reporter || null
       }));
 
       setReports(formattedReports);
@@ -128,7 +121,28 @@ export function AdminReportsTab() {
 
   const handleDeleteItemAndResolveReport = async (reportId: string, itemId: string) => {
     try {
-      // First delete the item
+      // First delete any comments associated with this item
+      const { error: commentsError } = await supabase
+        .from("comments")
+        .delete()
+        .eq("item_id", itemId);
+
+      if (commentsError) {
+        console.error("Error deleting comments:", commentsError);
+      }
+
+      // Then delete any other reports associated with this item
+      const { error: otherReportsError } = await supabase
+        .from("reports")
+        .delete()
+        .eq("item_id", itemId)
+        .neq("id", reportId); // Don't delete the current report yet
+      
+      if (otherReportsError) {
+        console.error("Error deleting other reports:", otherReportsError);
+      }
+
+      // Delete the item
       const { error: itemError } = await supabase
         .from("items")
         .delete()
@@ -148,8 +162,12 @@ export function AdminReportsTab() {
         throw reportError;
       }
 
-      // Update the reports list to remove this report (or mark it resolved)
-      setReports(reports.filter((report) => report.id !== reportId));
+      // Update the reports list to show the change
+      setReports(reports.map((report) => 
+        report.id === reportId 
+          ? { ...report, status: "resolved", item: null } 
+          : report
+      ));
 
       toast({
         title: "Item removed",
