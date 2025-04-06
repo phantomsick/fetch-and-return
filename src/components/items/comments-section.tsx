@@ -52,32 +52,33 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
             message: newComment.trim(),
           }
         ])
-        .select()
-        .single();
+        .select();
       
       if (error) {
         throw error;
       }
       
-      // Fetch the user profile for the new comment
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      const newCommentWithProfile = {
-        ...data,
-        user: profileData || null
-      } as Comment;
-      
-      setNewComment('');
-      onCommentAdded(newCommentWithProfile);
-      
-      toast({
-        title: "Comment added",
-        description: "Your comment has been added successfully.",
-      });
+      if (data && data.length > 0) {
+        // Fetch the user profile for the new comment
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        const newCommentWithProfile = {
+          ...data[0],
+          user: profileData || null
+        } as Comment;
+        
+        setNewComment('');
+        onCommentAdded(newCommentWithProfile);
+        
+        toast({
+          title: "Comment added",
+          description: "Your comment has been added successfully.",
+        });
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
       toast({
