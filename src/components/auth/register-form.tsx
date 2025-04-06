@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserIcon, MailIcon, LockIcon, KeyIcon } from 'lucide-react';
+import { UserIcon, MailIcon, LockIcon } from 'lucide-react';
 import { 
   InputOTP,
   InputOTPGroup,
@@ -26,17 +26,31 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
   const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const session = await signUp(email, password, name);
-      if (session) {
-        setTempSession(session);
+      // Pass name as part of user metadata object
+      const userData = { name: name };
+      const response = await signUp(email, password, userData);
+      
+      if (response && !response.error) {
+        setTempSession(response);
         setShowOTP(true);
         toast({
           title: "Verification code sent",
           description: "We've sent a verification code to your email address",
         });
+      } else if (response?.error) {
+        toast({
+          title: "Registration failed",
+          description: response.error.message || "An error occurred during registration",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error requesting OTP:', error);
+      toast({
+        title: "Registration failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -51,13 +65,21 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
     }
     
     try {
-      await verifyOTP(email, otpValue, tempSession);
-      toast({
-        title: "Success!",
-        description: "Your account has been verified successfully",
-      });
-      // Let the user login now
-      onToggleForm();
+      if (verifyOTP) {
+        await verifyOTP(email, otpValue, tempSession);
+        toast({
+          title: "Success!",
+          description: "Your account has been verified successfully",
+        });
+        // Let the user login now
+        onToggleForm();
+      } else {
+        toast({
+          title: "Verification not available",
+          description: "The verification function is not available",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error verifying OTP:', error);
       toast({

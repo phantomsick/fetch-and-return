@@ -4,7 +4,11 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import useAuthProvider, { AuthContextState } from './useAuthProvider';
 import { Profile } from '@/lib/supabase';
 
-export interface AuthContextInterface extends AuthContextState {}
+export interface AuthContextInterface extends AuthContextState {
+  loading: boolean;
+  authError: string | null;
+  verifyOTP?: (email: string, token: string, session: any) => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextInterface | undefined>(undefined);
 
