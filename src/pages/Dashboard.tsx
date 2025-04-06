@@ -62,12 +62,12 @@ const Dashboard = () => {
       // Refresh the profile data in the auth context
       if (refreshProfile) {
         await refreshProfile();
+        
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully."
+        });
       }
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
-      });
       
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -307,6 +307,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Dashboard;

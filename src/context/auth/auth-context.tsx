@@ -7,7 +7,8 @@ import { Profile } from '@/lib/supabase';
 export interface AuthContextInterface extends AuthContextState {
   loading: boolean;
   authError: string | null;
-  verifyOTP?: (email: string, token: string, session: any) => Promise<void>;
+  verifyOTP: (email: string, token: string, session: any) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextInterface | undefined>(undefined);

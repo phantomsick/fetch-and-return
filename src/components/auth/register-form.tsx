@@ -27,7 +27,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
     e.preventDefault();
     try {
       // Pass name as part of user metadata object
-      const userData = { name: name };
+      const userData = { name };
       const response = await signUp(email, password, userData);
       
       if (response && !response.error) {

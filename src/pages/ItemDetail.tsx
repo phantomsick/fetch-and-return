@@ -60,6 +60,7 @@ const ItemDetail = () => {
           .single();
         
         if (itemError) {
+          console.error("Error fetching item:", itemError);
           throw new Error(`Failed to fetch item: ${itemError.message}`);
         }
         
@@ -89,6 +90,7 @@ const ItemDetail = () => {
           }
         } as Item;
         
+        console.log("Fetched item with profile:", itemWithProfile);
         setItem(itemWithProfile);
         
         // For resolved items, check when it was resolved
@@ -110,25 +112,38 @@ const ItemDetail = () => {
           // Fetch profile data for each comment
           const commentsWithProfiles = await Promise.all(
             commentsData.map(async (comment) => {
-              const { data: userProfile, error: userProfileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', comment.user_id)
-                .maybeSingle();
-                
-              if (userProfileError) {
-                console.error("Error fetching comment user profile:", userProfileError);
-              }
-                
-              return {
-                ...comment,
-                user: userProfile || { 
-                  id: comment.user_id,
-                  name: "Anonymous",
-                  email: null,
-                  profile_picture: null
+              try {
+                const { data: userProfile, error: userProfileError } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', comment.user_id)
+                  .maybeSingle();
+                  
+                if (userProfileError) {
+                  console.error("Error fetching comment user profile:", userProfileError);
                 }
-              } as Comment;
+                  
+                return {
+                  ...comment,
+                  user: userProfile || { 
+                    id: comment.user_id,
+                    name: "Anonymous",
+                    email: null,
+                    profile_picture: null
+                  }
+                } as Comment;
+              } catch (err) {
+                console.error("Error processing comment:", err);
+                return {
+                  ...comment,
+                  user: { 
+                    id: comment.user_id,
+                    name: "Anonymous",
+                    email: null,
+                    profile_picture: null
+                  }
+                } as Comment;
+              }
             })
           );
           
@@ -161,6 +176,7 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (error) {
+        console.error("Error marking item as resolved:", error);
         throw error;
       }
       
@@ -184,7 +200,7 @@ const ItemDetail = () => {
   };
 
   const handleReopenClick = async () => {
-    if (!item || !resolvedDate) return;
+    if (!item) return;
     
     setIsReopening(true);
     
@@ -195,6 +211,7 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (error) {
+        console.error("Error reopening item:", error);
         throw error;
       }
       
@@ -244,6 +261,7 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (itemError) {
+        console.error("Error deleting item:", itemError);
         throw itemError;
       }
       
@@ -264,6 +282,7 @@ const ItemDetail = () => {
       });
     } finally {
       setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
   
