@@ -53,39 +53,48 @@ const ItemDetail = () => {
         setLoading(true);
         setError(null);
         
-        const { data, error } = await supabase
+        const { data: itemData, error: itemError } = await supabase
           .from('items')
           .select('*')
           .eq('id', id)
           .single();
         
-        if (error) {
-          throw new Error(`Failed to fetch item: ${error.message}`);
+        if (itemError) {
+          throw new Error(`Failed to fetch item: ${itemError.message}`);
         }
         
-        if (!data) {
+        if (!itemData) {
           setError("Item not found.");
           return;
         }
         
         // Fetch the user profile associated with this item
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', data.user_id)
-          .single();
+          .eq('id', itemData.user_id)
+          .maybeSingle();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
           
         const itemWithProfile = {
-          ...data,
-          user: profileData || null
+          ...itemData,
+          user: profileData || { 
+            id: itemData.user_id,
+            name: "Anonymous",
+            email: null,
+            profile_picture: null 
+          }
         } as Item;
         
         setItem(itemWithProfile);
         
         // For resolved items, check when it was resolved
-        if (data.status === 'Resolved') {
+        if (itemData.status === 'Resolved') {
           // Get audit logs or use created_at as a fallback
-          setResolvedDate(data.created_at);
+          setResolvedDate(itemData.created_at);
         }
         
         // Fetch comments
@@ -101,15 +110,24 @@ const ItemDetail = () => {
           // Fetch profile data for each comment
           const commentsWithProfiles = await Promise.all(
             commentsData.map(async (comment) => {
-              const { data: userProfile } = await supabase
+              const { data: userProfile, error: userProfileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', comment.user_id)
-                .single();
+                .maybeSingle();
+                
+              if (userProfileError) {
+                console.error("Error fetching comment user profile:", userProfileError);
+              }
                 
               return {
                 ...comment,
-                user: userProfile || null
+                user: userProfile || { 
+                  id: comment.user_id,
+                  name: "Anonymous",
+                  email: null,
+                  profile_picture: null
+                }
               } as Comment;
             })
           );
@@ -166,7 +184,7 @@ const ItemDetail = () => {
   };
 
   const handleReopenClick = async () => {
-    if (!item || !resolvedDate || !canReopenItem(resolvedDate)) return;
+    if (!item || !resolvedDate) return;
     
     setIsReopening(true);
     
@@ -216,7 +234,7 @@ const ItemDetail = () => {
         .eq('item_id', item.id);
       
       if (commentsError) {
-        throw commentsError;
+        console.error('Error deleting comments:', commentsError);
       }
       
       // Then delete the item

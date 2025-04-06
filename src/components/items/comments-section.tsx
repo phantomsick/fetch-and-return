@@ -60,15 +60,24 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
       
       if (data && data.length > 0) {
         // Fetch the user profile for the new comment
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
         
+        if (profileError) {
+          console.error('Error fetching profile data:', profileError);
+        }
+        
         const newCommentWithProfile = {
           ...data[0],
-          user: profileData || null
+          user: profileData || { 
+            id: user.id,
+            name: "Anonymous",
+            email: null,
+            profile_picture: null 
+          }
         } as Comment;
         
         setNewComment('');
