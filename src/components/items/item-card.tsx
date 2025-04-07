@@ -34,6 +34,7 @@ export function ItemCard({ item }: ItemCardProps) {
       .toUpperCase();
   };
 
+  // Make sure we handle null or undefined user properly
   const userName = item.user?.name || "Anonymous";
 
   return (

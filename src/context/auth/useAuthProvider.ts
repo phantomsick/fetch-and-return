@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User, UserResponse, AuthError } from '@supabase/supabase-js';
@@ -65,6 +66,7 @@ export default function useAuthProvider(): AuthContextState {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession);
         // Only synchronous state updates here
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -82,6 +84,7 @@ export default function useAuthProvider(): AuthContextState {
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Initial session:", currentSession);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 

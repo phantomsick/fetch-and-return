@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft } from "lucide-react";
@@ -48,7 +49,7 @@ const MyItems = () => {
       if (data && data.length > 0) {
         const itemsWithProfiles = data.map(item => ({
           ...item,
-          user: profile
+          user: profile  // Ensure the user profile is attached to each item
         })) as Item[];
         
         console.log("Fetched user items:", itemsWithProfiles);
