@@ -16,7 +16,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSectionProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,22 +59,12 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
       }
       
       if (data && data.length > 0) {
-        // Fetch the user profile for the new comment
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (profileError) {
-          console.error('Error fetching profile data:', profileError);
-        }
-        
+        // Use current profile data instead of fetching it again
         const newCommentWithProfile = {
           ...data[0],
-          user: profileData || { 
+          user: profile || { 
             id: user.id,
-            name: "Anonymous",
+            name: profile?.name || "Anonymous",
             email: null,
             profile_picture: null 
           }

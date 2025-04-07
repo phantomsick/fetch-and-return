@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User, UserResponse, AuthError } from '@supabase/supabase-js';
@@ -42,17 +41,20 @@ export default function useAuthProvider(): AuthContextState {
     if (!user) return;
 
     try {
+      console.log("Refreshing profile for user:", user.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
         return;
       }
 
+      console.log("Fetched profile:", data);
       setProfile(data);
     } catch (error) {
       console.error('Error in refreshProfile:', error);
@@ -100,17 +102,20 @@ export default function useAuthProvider(): AuthContextState {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for user:", userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
         return;
       }
 
+      console.log("Fetched profile:", data);
       setProfile(data);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -191,7 +196,11 @@ export default function useAuthProvider(): AuthContextState {
     }
   };
 
-  const verifyOTP = async (email: string, token: string, session: any): Promise<void> => {
+  const verifyOTP = async (
+    email: string, 
+    token: string, 
+    providedSession: any
+  ): Promise<void> => {
     setLoading(true);
     setAuthError(null);
     

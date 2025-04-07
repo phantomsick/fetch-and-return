@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth/auth-context";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,10 +38,22 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState(profile?.name || "");
+  const [name, setName] = useState("");
+  
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  }, [user, navigate, refreshProfile]);
   
   useEffect(() => {
     if (profile) {
+      console.log("Setting name from profile:", profile.name);
       setName(profile.name || "");
     }
   }, [profile]);
@@ -52,12 +64,17 @@ const Dashboard = () => {
     setIsLoading(true);
     
     try {
+      console.log("Updating profile with name:", name);
+      
       const { error } = await supabase
         .from('profiles')
         .update({ name })
         .eq('id', user.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
       
       // Refresh the profile data in the auth context
       if (refreshProfile) {

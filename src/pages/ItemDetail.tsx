@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
@@ -74,7 +73,7 @@ const ItemDetail = () => {
           .from('profiles')
           .select('*')
           .eq('id', itemData.user_id)
-          .maybeSingle();
+          .single();
           
         if (profileError) {
           console.error("Error fetching profile:", profileError);
@@ -84,7 +83,7 @@ const ItemDetail = () => {
           ...itemData,
           user: profileData || { 
             id: itemData.user_id,
-            name: "Anonymous",
+            name: null,
             email: null,
             profile_picture: null 
           }
@@ -117,7 +116,7 @@ const ItemDetail = () => {
                   .from('profiles')
                   .select('*')
                   .eq('id', comment.user_id)
-                  .maybeSingle();
+                  .single();
                   
                 if (userProfileError) {
                   console.error("Error fetching comment user profile:", userProfileError);
@@ -127,7 +126,7 @@ const ItemDetail = () => {
                   ...comment,
                   user: userProfile || { 
                     id: comment.user_id,
-                    name: "Anonymous",
+                    name: null,
                     email: null,
                     profile_picture: null
                   }
@@ -138,7 +137,7 @@ const ItemDetail = () => {
                   ...comment,
                   user: { 
                     id: comment.user_id,
-                    name: "Anonymous",
+                    name: null,
                     email: null,
                     profile_picture: null
                   }
@@ -313,6 +312,8 @@ const ItemDetail = () => {
     );
   }
   
+  const displayName = item?.user?.name || "Anonymous";
+  
   const formattedDate = formatDistanceToNow(new Date(item.date || item.created_at), {
     addSuffix: true,
   });
@@ -330,7 +331,7 @@ const ItemDetail = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          {item.image_url ? (
+          {item?.image_url ? (
             <img
               src={item.image_url}
               alt={item.title}
@@ -344,16 +345,16 @@ const ItemDetail = () => {
         </div>
         
         <div>
-          <h1 className="text-3xl font-semibold mb-4">{item.title}</h1>
+          <h1 className="text-3xl font-semibold mb-4">{item?.title}</h1>
           
           <div className="flex items-center text-muted-foreground mb-2">
             <MapPin className="mr-2 h-4 w-4" />
-            <span>{item.location}</span>
+            <span>{item?.location}</span>
           </div>
           
           <div className="flex items-center text-muted-foreground mb-2">
             <User className="mr-2 h-4 w-4" />
-            <span>{item.user?.name || "Anonymous"}</span>
+            <span>{displayName}</span>
           </div>
           
           <div className="flex items-center text-muted-foreground mb-2">
@@ -473,7 +474,6 @@ const ItemDetail = () => {
         />
       </div>
       
-      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
