@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, User, Mail, LogOut, ArrowLeft } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,26 +34,14 @@ const passwordSchema = z.object({
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 const Dashboard = () => {
-  const { user, profile, signOut, refreshProfile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
-  
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    
-    if (refreshProfile) {
-      refreshProfile();
-    }
-  }, [user, navigate, refreshProfile]);
+  const [name, setName] = useState(profile?.name || "");
   
   useEffect(() => {
     if (profile) {
-      console.log("Setting name from profile:", profile.name);
       setName(profile.name || "");
     }
   }, [profile]);
@@ -64,27 +52,17 @@ const Dashboard = () => {
     setIsLoading(true);
     
     try {
-      console.log("Updating profile with name:", name);
-      
       const { error } = await supabase
         .from('profiles')
         .update({ name })
         .eq('id', user.id);
         
-      if (error) {
-        console.error("Profile update error:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      // Refresh the profile data in the auth context
-      if (refreshProfile) {
-        await refreshProfile();
-        
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully."
-        });
-      }
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
       
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -324,6 +302,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-}
+};
 
 export default Dashboard;

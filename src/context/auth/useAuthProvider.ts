@@ -1,305 +1,211 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Session, User, UserResponse, AuthError } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/lib/supabase';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { fetchProfile, createToastMessages } from './helpers';
 
-export interface SignInResponse {
-  session: Session | null;
-  user: User | null;
-  error: AuthError | null;
-}
-
-export interface SignUpResponse {
-  session: Session | null;
-  user: User | null;
-  error: AuthError | null;
-}
-
-export interface AuthContextState {
-  session: Session | null;
-  user: User | null;
-  profile: Profile | null;
-  signIn: (email: string, password: string) => Promise<SignInResponse>;
-  signUp: (email: string, password: string, userData?: Record<string, any>) => Promise<SignUpResponse>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
-  updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
-  loading: boolean;
-  authError: string | null;
-  verifyOTP: (email: string, token: string, session: any) => Promise<void>;
-  refreshProfile: () => Promise<void>;
-}
-
-export default function useAuthProvider(): AuthContextState {
+export const useAuthProvider = () => {
+  const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  const refreshProfile = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      console.log("Refreshing profile for user:", user.id);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      console.log("Fetched profile:", data);
-      setProfile(data);
-    } catch (error) {
-      console.error('Error in refreshProfile:', error);
-    }
-  }, [user]);
-
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toasts = createToastMessages();
+  
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        console.log("Auth state changed:", event, currentSession);
-        // Only synchronous state updates here
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
-        // Defer Supabase calls with setTimeout
-        if (currentSession?.user) {
-          setTimeout(() => {
-            fetchProfile(currentSession.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
+    const setupAuth = async () => {
+      try {
+        // Set up auth state listener first
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log("Auth state changed:", event, session?.user?.id);
+          
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            // Defer fetching profile to avoid auth deadlock
+            setTimeout(async () => {
+              const userProfile = await fetchProfile(session.user.id);
+              if (userProfile) {
+                setProfile(userProfile);
+              }
+            }, 0);
+            
+            if (location.pathname === '/auth') {
+              navigate('/');
+            }
+          } else {
+            setProfile(null);
+            if (event === 'SIGNED_OUT') {
+              navigate('/auth');
+            }
+          }
+        });
+        
+        // Then check for existing session
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        
+        if (data.session?.user) {
+          const userProfile = await fetchProfile(data.session.user.id);
+          if (userProfile) {
+            setProfile(userProfile);
+          }
         }
+        
+        setLoading(false);
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth setup error:", error);
+        setLoading(false);
       }
-    );
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("Initial session:", currentSession);
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-
-      if (currentSession?.user) {
-        fetchProfile(currentSession.user.id);
-      }
-
-      setLoading(false);
-    }).catch(error => {
-      console.error('Error getting session:', error);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      console.log("Fetching profile for user:", userId);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      console.log("Fetched profile:", data);
-      setProfile(data);
-    } catch (error) {
-      console.error('Error in fetchProfile:', error);
-    }
-  };
-
-  const signIn = async (
-    email: string,
-    password: string
-  ): Promise<SignInResponse> => {
-    setLoading(true);
-    setAuthError(null);
     
+    setupAuth();
+  }, [navigate, location.pathname]);
+  
+  useEffect(() => {
+    if (location.pathname === '/auth' || location.pathname === '/') return;
+    
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, location.pathname, navigate]);
+  
+  const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      setLoading(true);
+      setAuthError(null);
+      
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
       if (error) {
         setAuthError(error.message);
-        return { session: null, user: null, error };
+        toasts.showLoginError(error.message);
+        return;
       }
-
-      return {
-        session: data.session,
-        user: data.user,
-        error: null,
-      };
-    } catch (error: any) {
-      setAuthError(error.message);
-      return {
-        session: null,
-        user: null,
-        error: error as AuthError,
-      };
+      
+      toasts.showLoginSuccess();
+    } catch (error) {
+      console.error('Sign in error:', error);
+      toasts.showUnexpectedError();
     } finally {
       setLoading(false);
     }
   };
-
-  const signUp = async (
-    email: string,
-    password: string,
-    userData?: Record<string, any>
-  ): Promise<SignUpResponse> => {
-    setLoading(true);
-    setAuthError(null);
-    
+  
+  const signUp = async (email: string, password: string, name: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
         password,
         options: {
-          data: userData || {}
+          data: {
+            name
+          },
+          emailRedirectTo: `${window.location.origin}/auth`
         }
       });
-
+      
       if (error) {
-        setAuthError(error.message);
-        return { session: null, user: null, error };
+        toasts.showLoginError(error.message);
+        return null;
       }
-
-      return {
-        session: data.session,
-        user: data.user,
-        error: null,
-      };
-    } catch (error: any) {
-      setAuthError(error.message);
-      return {
-        session: null,
-        user: null,
-        error: error as AuthError,
-      };
+      
+      return data.session;
+    } catch (error) {
+      console.error('Sign up error:', error);
+      toasts.showUnexpectedError();
+      return null;
     } finally {
       setLoading(false);
     }
   };
-
-  const verifyOTP = async (
-    email: string, 
-    token: string, 
-    providedSession: any
-  ): Promise<void> => {
-    setLoading(true);
-    setAuthError(null);
-    
+  
+  const verifyOTP = async (email: string, token: string, session?: any) => {
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.verifyOtp({
         email,
         token,
         type: 'signup'
       });
-
+      
       if (error) {
-        setAuthError(error.message);
         throw error;
       }
     } catch (error: any) {
-      setAuthError(error.message);
+      console.error('OTP verification error:', error);
       throw error;
     } finally {
       setLoading(false);
     }
   };
-
-  const signOut = async (): Promise<void> => {
-    setLoading(true);
+  
+  const resetPassword = async (email: string) => {
     try {
-      await supabase.auth.signOut();
-      setProfile(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetPassword = async (
-    email: string
-  ): Promise<{ error: AuthError | null }> => {
-    setLoading(true);
-    setAuthError(null);
-    
-    try {
+      setLoading(true);
+      setAuthError(null);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
+        redirectTo: `${window.location.origin}/auth?reset=true`,
       });
-
+      
       if (error) {
         setAuthError(error.message);
-        return { error };
+        toasts.showResetPasswordError(error.message);
+        return;
       }
-
-      return { error: null };
-    } catch (error: any) {
-      setAuthError(error.message);
-      return { error: error as AuthError };
+      
+      toasts.showResetPasswordSuccess();
+    } catch (error) {
+      console.error('Password reset error:', error);
+      toasts.showUnexpectedError();
     } finally {
       setLoading(false);
     }
   };
-
-  const updatePassword = async (
-    password: string
-  ): Promise<{ error: AuthError | null }> => {
-    setLoading(true);
-    setAuthError(null);
-    
+  
+  const signOut = async () => {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password,
-      });
-
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      
       if (error) {
-        setAuthError(error.message);
-        return { error };
+        toasts.showSignOutError(error.message);
+        return;
       }
-
-      return { error: null };
-    } catch (error: any) {
-      setAuthError(error.message);
-      return { error: error as AuthError };
+      
+      toasts.showSignOutSuccess();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toasts.showUnexpectedError();
     } finally {
       setLoading(false);
     }
   };
 
-  return {
-    session,
-    user,
-    profile,
-    signIn,
-    signUp,
+  return { 
+    session, 
+    user, 
+    profile, 
+    signIn, 
+    signUp, 
     signOut,
     resetPassword,
-    updatePassword,
-    loading,
-    authError,
     verifyOTP,
-    refreshProfile
+    loading,
+    authError 
   };
-}
+};

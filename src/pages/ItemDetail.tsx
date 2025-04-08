@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
@@ -52,50 +53,39 @@ const ItemDetail = () => {
         setLoading(true);
         setError(null);
         
-        const { data: itemData, error: itemError } = await supabase
+        const { data, error } = await supabase
           .from('items')
           .select('*')
           .eq('id', id)
           .single();
         
-        if (itemError) {
-          console.error("Error fetching item:", itemError);
-          throw new Error(`Failed to fetch item: ${itemError.message}`);
+        if (error) {
+          throw new Error(`Failed to fetch item: ${error.message}`);
         }
         
-        if (!itemData) {
+        if (!data) {
           setError("Item not found.");
           return;
         }
         
         // Fetch the user profile associated with this item
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', itemData.user_id)
+          .eq('id', data.user_id)
           .single();
           
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-        }
-          
         const itemWithProfile = {
-          ...itemData,
-          user: profileData || { 
-            id: itemData.user_id,
-            name: null,
-            email: null,
-            profile_picture: null 
-          }
+          ...data,
+          user: profileData || null
         } as Item;
         
-        console.log("Fetched item with profile:", itemWithProfile);
         setItem(itemWithProfile);
         
         // For resolved items, check when it was resolved
-        if (itemData.status === 'Resolved') {
+        if (data.status === 'Resolved') {
           // Get audit logs or use created_at as a fallback
-          setResolvedDate(itemData.created_at);
+          setResolvedDate(data.created_at);
         }
         
         // Fetch comments
@@ -111,38 +101,16 @@ const ItemDetail = () => {
           // Fetch profile data for each comment
           const commentsWithProfiles = await Promise.all(
             commentsData.map(async (comment) => {
-              try {
-                const { data: userProfile, error: userProfileError } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('id', comment.user_id)
-                  .single();
-                  
-                if (userProfileError) {
-                  console.error("Error fetching comment user profile:", userProfileError);
-                }
-                  
-                return {
-                  ...comment,
-                  user: userProfile || { 
-                    id: comment.user_id,
-                    name: null,
-                    email: null,
-                    profile_picture: null
-                  }
-                } as Comment;
-              } catch (err) {
-                console.error("Error processing comment:", err);
-                return {
-                  ...comment,
-                  user: { 
-                    id: comment.user_id,
-                    name: null,
-                    email: null,
-                    profile_picture: null
-                  }
-                } as Comment;
-              }
+              const { data: userProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', comment.user_id)
+                .single();
+                
+              return {
+                ...comment,
+                user: userProfile || null
+              } as Comment;
             })
           );
           
@@ -175,7 +143,6 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (error) {
-        console.error("Error marking item as resolved:", error);
         throw error;
       }
       
@@ -199,7 +166,7 @@ const ItemDetail = () => {
   };
 
   const handleReopenClick = async () => {
-    if (!item) return;
+    if (!item || !resolvedDate || !canReopenItem(resolvedDate)) return;
     
     setIsReopening(true);
     
@@ -210,7 +177,6 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (error) {
-        console.error("Error reopening item:", error);
         throw error;
       }
       
@@ -250,7 +216,7 @@ const ItemDetail = () => {
         .eq('item_id', item.id);
       
       if (commentsError) {
-        console.error('Error deleting comments:', commentsError);
+        throw commentsError;
       }
       
       // Then delete the item
@@ -260,7 +226,6 @@ const ItemDetail = () => {
         .eq('id', item.id);
       
       if (itemError) {
-        console.error("Error deleting item:", itemError);
         throw itemError;
       }
       
@@ -281,7 +246,6 @@ const ItemDetail = () => {
       });
     } finally {
       setIsDeleting(false);
-      setShowDeleteDialog(false);
     }
   };
   
@@ -312,8 +276,6 @@ const ItemDetail = () => {
     );
   }
   
-  const displayName = item?.user?.name || "Anonymous";
-  
   const formattedDate = formatDistanceToNow(new Date(item.date || item.created_at), {
     addSuffix: true,
   });
@@ -331,7 +293,7 @@ const ItemDetail = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          {item?.image_url ? (
+          {item.image_url ? (
             <img
               src={item.image_url}
               alt={item.title}
@@ -345,16 +307,16 @@ const ItemDetail = () => {
         </div>
         
         <div>
-          <h1 className="text-3xl font-semibold mb-4">{item?.title}</h1>
+          <h1 className="text-3xl font-semibold mb-4">{item.title}</h1>
           
           <div className="flex items-center text-muted-foreground mb-2">
             <MapPin className="mr-2 h-4 w-4" />
-            <span>{item?.location}</span>
+            <span>{item.location}</span>
           </div>
           
           <div className="flex items-center text-muted-foreground mb-2">
             <User className="mr-2 h-4 w-4" />
-            <span>{displayName}</span>
+            <span>{item.user?.name || "Anonymous"}</span>
           </div>
           
           <div className="flex items-center text-muted-foreground mb-2">
@@ -474,6 +436,7 @@ const ItemDetail = () => {
         />
       </div>
       
+      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>

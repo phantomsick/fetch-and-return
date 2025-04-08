@@ -16,7 +16,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSectionProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,32 +52,32 @@ export function CommentsSection({ itemId, comments, onCommentAdded }: CommentsSe
             message: newComment.trim(),
           }
         ])
-        .select();
+        .select()
+        .single();
       
       if (error) {
         throw error;
       }
       
-      if (data && data.length > 0) {
-        // Use current profile data instead of fetching it again
-        const newCommentWithProfile = {
-          ...data[0],
-          user: profile || { 
-            id: user.id,
-            name: profile?.name || "Anonymous",
-            email: null,
-            profile_picture: null 
-          }
-        } as Comment;
-        
-        setNewComment('');
-        onCommentAdded(newCommentWithProfile);
-        
-        toast({
-          title: "Comment added",
-          description: "Your comment has been added successfully.",
-        });
-      }
+      // Fetch the user profile for the new comment
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      const newCommentWithProfile = {
+        ...data,
+        user: profileData || null
+      } as Comment;
+      
+      setNewComment('');
+      onCommentAdded(newCommentWithProfile);
+      
+      toast({
+        title: "Comment added",
+        description: "Your comment has been added successfully.",
+      });
     } catch (error) {
       console.error('Error adding comment:', error);
       toast({

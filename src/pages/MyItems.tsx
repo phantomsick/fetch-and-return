@@ -5,7 +5,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/items/item-card";
 import { Item, supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth/auth-context";
 
 const MyItems = () => {
@@ -14,15 +14,13 @@ const MyItems = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   
   useEffect(() => {
     if (user) {
       fetchUserItems();
-    } else {
-      navigate('/auth');
     }
-  }, [user, navigate]);
+  }, [user]);
   
   const fetchUserItems = async () => {
     try {
@@ -47,10 +45,20 @@ const MyItems = () => {
       }
       
       if (data && data.length > 0) {
-        const itemsWithProfiles = data.map(item => ({
-          ...item,
-          user: profile  // Ensure the user profile is attached to each item
-        })) as Item[];
+        const itemsWithProfiles = await Promise.all(
+          data.map(async (item) => {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', item.user_id)
+              .single();
+            
+            return {
+              ...item,
+              user: profileData || null
+            } as Item;
+          })
+        );
         
         console.log("Fetched user items:", itemsWithProfiles);
         setItems(itemsWithProfiles);

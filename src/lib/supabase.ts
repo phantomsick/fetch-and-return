@@ -8,8 +8,6 @@ export type Profile = {
   name: string | null;
   email: string | null;
   profile_picture: string | null;
-  role?: string;
-  banned?: boolean;
 };
 
 export type Item = {

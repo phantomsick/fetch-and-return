@@ -1,32 +1,24 @@
 
-import React, { createContext, useContext } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import useAuthProvider, { AuthContextState } from './useAuthProvider';
-import { Profile } from '@/lib/supabase';
+import { createContext, useContext, ReactNode } from 'react';
+import { AuthContextType } from './types';
+import { useAuthProvider } from './useAuthProvider';
 
-export interface AuthContextInterface extends AuthContextState {
-  loading: boolean;
-  authError: string | null;
-  verifyOTP: (email: string, token: string, session: any) => Promise<void>;
-  refreshProfile: () => Promise<void>;
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextInterface | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuthProvider();
   
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
-};
+  return (
+    <AuthContext.Provider value={auth}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
 
-export function useAuth(): AuthContextInterface {
+export function useAuth() {
   const context = useContext(AuthContext);
-  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
   return context;
 }
-
-export type { User, Session, AuthError, Profile };

@@ -34,9 +34,6 @@ export function ItemCard({ item }: ItemCardProps) {
       .toUpperCase();
   };
 
-  // Make sure we handle null or undefined user properly
-  const userName = item.user?.name || "Anonymous";
-
   return (
     <Card className="item-card h-full flex flex-col overflow-hidden">
       <CardContent className="p-0">
@@ -87,7 +84,7 @@ export function ItemCard({ item }: ItemCardProps) {
           
           <div className="flex items-center text-sm text-muted-foreground">
             <User className="mr-1 h-4 w-4" />
-            <span>{userName}</span>
+            <span>{item.user?.name || "Anonymous"}</span>
           </div>
         </div>
       </CardContent>
